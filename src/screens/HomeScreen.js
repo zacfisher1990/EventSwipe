@@ -45,6 +45,7 @@ const DUMMY_EVENTS = [
 
 export default function HomeScreen() {
   const [cardIndex, setCardIndex] = useState(0);
+  const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     distance: 25,
@@ -62,9 +63,16 @@ export default function HomeScreen() {
     console.log('Saved:', DUMMY_EVENTS[index].title);
   };
 
+  const onSwipedAll = () => {
+    setAllSwiped(true);
+  };
+
   const handleApplyFilters = (newFilters) => {
     setFilters(newFilters);
     console.log('Applied filters:', newFilters);
+    // Reset the swiper when filters change
+    setAllSwiped(false);
+    setCardIndex(0);
   };
 
   const renderCard = (event) => {
@@ -85,6 +93,22 @@ export default function HomeScreen() {
       </View>
     );
   };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyEmoji}>🎉</Text>
+      <Text style={styles.emptyTitle}>You're all caught up!</Text>
+      <Text style={styles.emptyText}>
+        No more events to show near you.{'\n'}Check back later or adjust your filters.
+      </Text>
+      <TouchableOpacity 
+        style={styles.emptyButton} 
+        onPress={() => setShowFilters(true)}
+      >
+        <Text style={styles.emptyButtonText}>Adjust Filters</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -110,57 +134,62 @@ export default function HomeScreen() {
       )}
       
       <View style={styles.swiperContainer}>
-        <Swiper
-          cards={DUMMY_EVENTS}
-          renderCard={renderCard}
-          onSwipedLeft={onSwipedLeft}
-          onSwipedRight={onSwipedRight}
-          cardIndex={cardIndex}
-          backgroundColor={'#f5f5f5'}
-          stackSize={3}
-          stackSeparation={15}
-          containerStyle={styles.swiperContent}
-          overlayLabels={{
-            left: {
-              title: 'NOPE',
-              style: {
-                label: {
-                  backgroundColor: '#FF6B6B',
-                  color: 'white',
-                  fontSize: 24,
-                  borderRadius: 8,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: -30,
-                },
-              },
-            },
-            right: {
-              title: 'SAVE',
-              style: {
-                label: {
-                  backgroundColor: '#4ECDC4',
-                  color: 'white',
-                  fontSize: 24,
-                  borderRadius: 8,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: 30,
+        {allSwiped ? (
+          renderEmptyState()
+        ) : (
+          <Swiper
+            cards={DUMMY_EVENTS}
+            renderCard={renderCard}
+            onSwipedLeft={onSwipedLeft}
+            onSwipedRight={onSwipedRight}
+            onSwipedAll={onSwipedAll}
+            cardIndex={cardIndex}
+            backgroundColor={'#f5f5f5'}
+            stackSize={3}
+            stackSeparation={15}
+            containerStyle={styles.swiperContent}
+            overlayLabels={{
+              left: {
+                title: 'NOPE',
+                style: {
+                  label: {
+                    backgroundColor: '#FF6B6B',
+                    color: 'white',
+                    fontSize: 24,
+                    borderRadius: 8,
+                    padding: 10,
+                  },
+                  wrapper: {
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-start',
+                    marginTop: 30,
+                    marginLeft: -30,
+                  },
                 },
               },
-            },
-          }}
-        />
+              right: {
+                title: 'SAVE',
+                style: {
+                  label: {
+                    backgroundColor: '#4ECDC4',
+                    color: 'white',
+                    fontSize: 24,
+                    borderRadius: 8,
+                    padding: 10,
+                  },
+                  wrapper: {
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    justifyContent: 'flex-start',
+                    marginTop: 30,
+                    marginLeft: 30,
+                  },
+                },
+              },
+            }}
+          />
+        )}
       </View>
 
       <FilterModal
@@ -273,5 +302,40 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 14,
     color: '#999',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
