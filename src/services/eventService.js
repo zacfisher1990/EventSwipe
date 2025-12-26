@@ -1,11 +1,26 @@
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { 
+  doc, 
+  updateDoc, 
+  arrayUnion, 
+  getDoc,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  Timestamp 
+} from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { uploadEventImage } from './storageService';
 
+// Save event to user's saved list
 export const saveEvent = async (userId, event) => {
   try {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
-      savedEvents: arrayUnion(event)
+      savedEvents: arrayUnion(event),
+      swipedEvents: arrayUnion(event.id)
     });
     return { success: true };
   } catch (error) {
@@ -14,6 +29,21 @@ export const saveEvent = async (userId, event) => {
   }
 };
 
+// Pass on an event (swipe left)
+export const passEvent = async (userId, eventId) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      swipedEvents: arrayUnion(eventId)
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error passing event:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Remove event from user's saved list
 export const unsaveEvent = async (userId, eventId) => {
   try {
     const userRef = doc(db, 'users', userId);
@@ -32,6 +62,7 @@ export const unsaveEvent = async (userId, eventId) => {
   }
 };
 
+// Get user's saved events
 export const getSavedEvents = async (userId) => {
   try {
     const userRef = doc(db, 'users', userId);
@@ -40,5 +71,109 @@ export const getSavedEvents = async (userId) => {
   } catch (error) {
     console.error('Error getting saved events:', error);
     return [];
+  }
+};
+
+// Get user's swiped event IDs
+export const getSwipedEventIds = async (userId) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    return userDoc.data()?.swipedEvents || [];
+  } catch (error) {
+    console.error('Error getting swiped events:', error);
+    return [];
+  }
+};
+
+// Create a new event
+export const createEvent = async (eventData, userId, imageUri = null) => {
+  try {
+    const eventsRef = collection(db, 'events');
+    
+    let imageUrl = eventData.image;
+    
+    // If there's a local image URI (not a web URL), upload it first
+    if (imageUri && !imageUri.startsWith('http')) {
+      const tempId = Date.now().toString();
+      const uploadResult = await uploadEventImage(imageUri, tempId);
+      if (uploadResult.success) {
+        imageUrl = uploadResult.url;
+      } else {
+        // Fall back to placeholder if upload fails
+        imageUrl = `https://picsum.photos/400/300?random=${tempId}`;
+      }
+    }
+    
+    // Create the event with the final image URL
+    const newEvent = {
+      ...eventData,
+      image: imageUrl,
+      posterId: userId,
+      createdAt: Timestamp.now(),
+      active: true,
+    };
+    
+    const docRef = await addDoc(eventsRef, newEvent);
+    
+    return { success: true, eventId: docRef.id };
+  } catch (error) {
+    console.error('Error creating event:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get all active events (excluding ones user has swiped)
+export const getEvents = async (userId = null) => {
+  try {
+    const eventsRef = collection(db, 'events');
+    const q = query(
+      eventsRef, 
+      where('active', '==', true),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    let events = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    
+    // Filter out events the user has already swiped on
+    if (userId) {
+      const swipedIds = await getSwipedEventIds(userId);
+      events = events.filter(event => !swipedIds.includes(event.id));
+      
+      // Also filter out events posted by the user
+      events = events.filter(event => event.posterId !== userId);
+    }
+    
+    return { success: true, events };
+  } catch (error) {
+    console.error('Error getting events:', error);
+    return { success: false, error: error.message, events: [] };
+  }
+};
+
+// Get events posted by a specific user
+export const getUserEvents = async (userId) => {
+  try {
+    const eventsRef = collection(db, 'events');
+    const q = query(
+      eventsRef, 
+      where('posterId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    const events = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    
+    return { success: true, events };
+  } catch (error) {
+    console.error('Error getting user events:', error);
+    return { success: false, error: error.message, events: [] };
   }
 };

@@ -1,53 +1,17 @@
-import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { saveEvent } from '../services/eventService';
+import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
 
-const DUMMY_EVENTS = [
-  {
-    id: '1',
-    title: 'Jazz Night at Blue Room',
-    category: 'Music',
-    date: 'Sat, Jan 4 • 8:00 PM',
-    location: 'Blue Room, Downtown',
-    distance: '2.5 mi',
-    image: 'https://picsum.photos/400/300?random=1',
-  },
-  {
-    id: '2',
-    title: 'Food Truck Festival',
-    category: 'Food',
-    date: 'Sun, Jan 5 • 12:00 PM',
-    location: 'Central Park',
-    distance: '4.1 mi',
-    image: 'https://picsum.photos/400/300?random=2',
-  },
-  {
-    id: '3',
-    title: 'Stand-Up Comedy Show',
-    category: 'Comedy',
-    date: 'Fri, Jan 10 • 9:00 PM',
-    location: 'Laugh Factory',
-    distance: '8.3 mi',
-    image: 'https://picsum.photos/400/300?random=3',
-  },
-  {
-    id: '4',
-    title: 'Yoga in the Park',
-    category: 'Fitness',
-    date: 'Sat, Jan 11 • 7:00 AM',
-    location: 'Riverside Park',
-    distance: '1.2 mi',
-    image: 'https://picsum.photos/400/300?random=4',
-  },
-];
-
 export default function HomeScreen() {
+  const [events, setEvents] = useState([]);
   const [cardIndex, setCardIndex] = useState(0);
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     distance: 25,
     timeRange: 'month',
@@ -57,16 +21,46 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const swiperRef = useRef(null);
 
-  const onSwipedLeft = (index) => {
-    console.log('Passed on:', DUMMY_EVENTS[index].title);
+  const loadEvents = async () => {
+    setLoading(true);
+    const result = await getEvents(user?.uid);
+    if (result.success) {
+      setEvents(result.events);
+      setAllSwiped(result.events.length === 0);
+      setCardIndex(0);
+    }
+    setLoading(false);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEvents();
+    }, [user])
+  );
+
+  const onSwipedLeft = async (index) => {
+    const event = events[index];
+    console.log('Passed on:', event?.title);
+    
+    // Track that user passed on this event
+    if (user?.uid && event) {
+      await passEvent(user.uid, event.id);
+    }
   };
 
   const onSwipedRight = async (index) => {
-    const event = DUMMY_EVENTS[index];
-    console.log('Saving:', event.title);
+    const event = events[index];
+    console.log('Saving:', event?.title);
     
-    if (user?.uid) {
-      const result = await saveEvent(user.uid, event);
+    if (user?.uid && event) {
+      const eventToSave = {
+        ...event,
+        image: event.image && !event.image.startsWith('blob:') 
+          ? event.image 
+          : `https://picsum.photos/400/300?random=${event.id}`,
+      };
+      
+      const result = await saveEvent(user.uid, eventToSave);
       if (result.success) {
         console.log('Event saved successfully!');
       } else {
@@ -94,12 +88,17 @@ export default function HomeScreen() {
         <Image source={{ uri: event.image }} style={styles.cardImage} />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={styles.category}>{event.category}</Text>
-            <Text style={styles.distance}>{event.distance}</Text>
+            <Text style={styles.category}>{event.category?.toUpperCase()}</Text>
+            <Text style={styles.distance}>{event.distance || ''}</Text>
           </View>
           <Text style={styles.title}>{event.title}</Text>
-          <Text style={styles.date}>{event.date}</Text>
+          <Text style={styles.date}>{event.date} • {event.time}</Text>
           <Text style={styles.location}>{event.location}</Text>
+          {event.price && (
+            <View style={styles.priceTag}>
+              <Text style={styles.priceText}>{event.price}</Text>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -118,6 +117,19 @@ export default function HomeScreen() {
       >
         <Text style={styles.emptyButtonText}>Adjust Filters</Text>
       </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.emptyButton, styles.refreshButton]} 
+        onPress={loadEvents}
+      >
+        <Text style={styles.emptyButtonText}>Refresh Events</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLoading = () => (
+    <View style={styles.loadingState}>
+      <ActivityIndicator size="large" color="#4ECDC4" />
+      <Text style={styles.loadingText}>Finding events near you...</Text>
     </View>
   );
 
@@ -143,12 +155,14 @@ export default function HomeScreen() {
       )}
       
       <View style={styles.swiperContainer}>
-        {allSwiped ? (
+        {loading ? (
+          renderLoading()
+        ) : allSwiped || events.length === 0 ? (
           renderEmptyState()
         ) : (
           <Swiper
             ref={swiperRef}
-            cards={DUMMY_EVENTS}
+            cards={events}
             renderCard={renderCard}
             onSwipedLeft={onSwipedLeft}
             onSwipedRight={onSwipedRight}
@@ -308,6 +322,29 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 14,
     color: '#999',
+    marginBottom: 12,
+  },
+  priceTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  priceText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
   emptyState: {
     flex: 1,
@@ -338,6 +375,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 12,
+    marginBottom: 12,
+  },
+  refreshButton: {
+    backgroundColor: '#666',
   },
   emptyButtonText: {
     color: '#fff',

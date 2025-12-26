@@ -44,9 +44,9 @@ export default function SavedScreen() {
       <TouchableOpacity 
         style={styles.unsaveButton}
         onPress={() => handleUnsave(item.id)}
-      >
-        <Ionicons name="heart" size={24} color="#FF6B6B" />
-      </TouchableOpacity>
+        >
+        <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
+    </TouchableOpacity>
       <View style={styles.eventInfo}>
         <Text style={styles.eventCategory}>{item.category}</Text>
         <Text style={styles.eventTitle}>{item.title}</Text>

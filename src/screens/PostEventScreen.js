@@ -9,9 +9,12 @@ import {
   Image,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../context/AuthContext';
+import { createEvent } from '../services/eventService';
 
 const CATEGORIES = [
   { id: 'music', label: 'Music', emoji: '🎵' },
@@ -37,12 +40,17 @@ export default function PostEventScreen({ navigation }) {
   const [ticketUrl, setTicketUrl] = useState('');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const { user } = useAuth();
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photos to add an event image.');
+      setError('Please allow access to your photos to add an event image.');
       return;
     }
 
@@ -58,39 +66,88 @@ export default function PostEventScreen({ navigation }) {
     }
   };
 
-  const handleSubmit = () => {
-    if (!title || !date || !time || !location || !category) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields.');
-      return;
-    }
-
-    const eventData = {
-      title,
-      description,
-      date,
-      time,
-      location,
-      address,
-      category,
-      ticketUrl,
-      price,
-      image,
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log('Event submitted:', eventData);
-    
-    Alert.alert(
-      'Event Submitted!',
-      'Your event has been submitted for review.',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setDate('');
+    setTime('');
+    setLocation('');
+    setAddress('');
+    setCategory('');
+    setTicketUrl('');
+    setPrice('');
+    setImage(null);
+    setError('');
   };
+
+  const handleSubmit = async () => {
+  setError('');
+  
+  if (!title || !date || !time || !location || !category) {
+    setError('Please fill in all required fields.');
+    return;
+  }
+
+  setLoading(true);
+
+  const eventData = {
+    title,
+    description,
+    date,
+    time,
+    location,
+    address,
+    category,
+    ticketUrl,
+    price: price || 'Free',
+    // Use placeholder if no image selected
+    image: image || `https://picsum.photos/400/300?random=${Date.now()}`,
+    distance: '0 mi',
+  };
+
+  // Pass the local image URI to createEvent for upload
+  const result = await createEvent(eventData, user.uid, image);
+  
+  setLoading(false);
+
+  if (result.success) {
+    setSuccess(true);
+  } else {
+    setError(result.error || 'Failed to post event. Please try again.');
+  }
+};
+
+  const handleSuccessDone = () => {
+    resetForm();
+    setSuccess(false);
+    navigation.navigate('Discover');
+  };
+
+  const handlePostAnother = () => {
+    resetForm();
+    setSuccess(false);
+  };
+
+  // Success screen
+  if (success) {
+    return (
+      <View style={styles.successContainer}>
+        <View style={styles.successContent}>
+          <Text style={styles.successEmoji}>🎉</Text>
+          <Text style={styles.successTitle}>Event Posted!</Text>
+          <Text style={styles.successText}>
+            Your event has been posted successfully and is now live for others to discover.
+          </Text>
+          <TouchableOpacity style={styles.successButton} onPress={handleSuccessDone}>
+            <Text style={styles.successButtonText}>View Events</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
+            <Text style={styles.secondaryButtonText}>Post Another Event</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -99,12 +156,26 @@ export default function PostEventScreen({ navigation }) {
           <Ionicons name="close" size={28} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Post Event</Text>
-        <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-          <Text style={styles.submitText}>Post</Text>
+        <TouchableOpacity 
+          onPress={handleSubmit} 
+          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.submitText}>Post</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
         {/* Image Picker */}
         <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
           {image ? (
@@ -278,6 +349,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitText: {
     color: '#fff',
@@ -287,6 +363,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  errorContainer: {
+    backgroundColor: '#FFE5E5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    textAlign: 'center',
+    fontSize: 14,
   },
   imagePicker: {
     marginBottom: 24,
@@ -367,5 +454,63 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  // Success screen styles
+  successContainer: {
+    flex: 1,
+    backgroundColor: '#4ECDC4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  successContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 40,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 400,
+  },
+  successEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  successText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  successButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#4ECDC4',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
