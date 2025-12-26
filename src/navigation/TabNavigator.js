@@ -1,17 +1,24 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ icon, focused }) => (
-  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    <Text style={{ fontSize: 24 }}>{icon}</Text>
-  </View>
-);
+const getBottomPadding = () => {
+  if (Platform.OS === 'web') return 16;
+  if (Platform.OS === 'ios') return 24;
+  return 12;
+};
+
+const getTabBarHeight = () => {
+  if (Platform.OS === 'web') return 70;
+  if (Platform.OS === 'ios') return 84;
+  return 68;
+};
 
 export default function TabNavigator() {
   return (
@@ -23,14 +30,16 @@ export default function TabNavigator() {
           borderTopWidth: 1,
           borderTopColor: '#eee',
           paddingTop: 8,
-          paddingBottom: 8,
-          height: 60,
+          paddingBottom: getBottomPadding(),
+          height: getTabBarHeight(),
+          position: 'relative',
         },
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: '#999',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+          marginTop: 4,
         },
       }}
     >
@@ -38,8 +47,12 @@ export default function TabNavigator() {
         name="Discover"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🔍" focused={focused} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'compass' : 'compass-outline'} 
+              size={26} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -47,8 +60,12 @@ export default function TabNavigator() {
         name="Saved"
         component={SavedScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="💾" focused={focused} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'heart' : 'heart-outline'} 
+              size={26} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -56,8 +73,12 @@ export default function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👤" focused={focused} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
+              size={26} 
+              color={color} 
+            />
           ),
         }}
       />
