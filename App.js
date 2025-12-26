@@ -1,12 +1,19 @@
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AuthModal from './src/components/AuthModal';
-import HomeScreen from './src/screens/HomeScreen';
+import TabNavigator from './src/navigation/TabNavigator';
 
 function AppContent() {
   const { user } = useAuth();
   
-  return user ? <HomeScreen /> : <AuthModal />;
+  return user ? (
+    <NavigationContainer>
+      <TabNavigator />
+    </NavigationContainer>
+  ) : (
+    <AuthModal />
+  );
 }
 
 export default function App() {

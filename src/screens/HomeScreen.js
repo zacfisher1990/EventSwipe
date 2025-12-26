@@ -53,7 +53,7 @@ export default function HomeScreen() {
     categories: [],
     location: null,
   });
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   const onSwipedLeft = (index) => {
     console.log('Passed on:', DUMMY_EVENTS[index].title);
@@ -113,9 +113,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={signOut} style={styles.headerButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButton} />
         <Text style={styles.headerTitle}>EventSwipe</Text>
         <TouchableOpacity 
           onPress={() => setShowFilters(true)} 
