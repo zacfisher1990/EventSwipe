@@ -17,8 +17,9 @@ export default function AuthModal() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp, isLoading } = useAuth();
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async () => {
     setError('');
@@ -33,15 +34,29 @@ export default function AuthModal() {
       return;
     }
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    
     try {
+      let result;
       if (isLogin) {
-        await signIn(email, password);
+        result = await signIn(email, password);
       } else {
-        await signUp(email, password);
+        result = await signUp(email, password);
+      }
+      
+      if (!result.success) {
+        setError(result.error);
       }
     } catch (err) {
       setError(err.message || 'Something went wrong');
     }
+    
+    setLoading(false);
   };
 
   const toggleMode = () => {
@@ -98,9 +113,9 @@ export default function AuthModal() {
           <TouchableOpacity 
             style={styles.button} 
             onPress={handleSubmit}
-            disabled={isLoading}
+            disabled={loading}
           >
-            {isLoading ? (
+            {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useAuth } from '../context/AuthContext';
+import { saveEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
 
 const DUMMY_EVENTS = [
@@ -54,13 +55,24 @@ export default function HomeScreen() {
     location: null,
   });
   const { user } = useAuth();
+  const swiperRef = useRef(null);
 
   const onSwipedLeft = (index) => {
     console.log('Passed on:', DUMMY_EVENTS[index].title);
   };
 
-  const onSwipedRight = (index) => {
-    console.log('Saved:', DUMMY_EVENTS[index].title);
+  const onSwipedRight = async (index) => {
+    const event = DUMMY_EVENTS[index];
+    console.log('Saving:', event.title);
+    
+    if (user?.uid) {
+      const result = await saveEvent(user.uid, event);
+      if (result.success) {
+        console.log('Event saved successfully!');
+      } else {
+        console.error('Failed to save event:', result.error);
+      }
+    }
   };
 
   const onSwipedAll = () => {
@@ -70,7 +82,6 @@ export default function HomeScreen() {
   const handleApplyFilters = (newFilters) => {
     setFilters(newFilters);
     console.log('Applied filters:', newFilters);
-    // Reset the swiper when filters change
     setAllSwiped(false);
     setCardIndex(0);
   };
@@ -136,6 +147,7 @@ export default function HomeScreen() {
           renderEmptyState()
         ) : (
           <Swiper
+            ref={swiperRef}
             cards={DUMMY_EVENTS}
             renderCard={renderCard}
             onSwipedLeft={onSwipedLeft}
@@ -224,11 +236,7 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
-  },
-  signOutText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    fontWeight: '600',
+    minWidth: 60,
   },
   filterText: {
     color: '#4ECDC4',

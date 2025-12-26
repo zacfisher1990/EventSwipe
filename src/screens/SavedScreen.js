@@ -1,38 +1,59 @@
-import React from 'react';
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity } from 'react-native';
-
-const SAVED_EVENTS = [
-  {
-    id: '1',
-    title: 'Jazz Night at Blue Room',
-    category: 'Music',
-    date: 'Sat, Jan 4 • 8:00 PM',
-    location: 'Blue Room, Downtown',
-    distance: '2.5 mi',
-    image: 'https://picsum.photos/400/300?random=1',
-  },
-  {
-    id: '2',
-    title: 'Food Truck Festival',
-    category: 'Food',
-    date: 'Sun, Jan 5 • 12:00 PM',
-    location: 'Central Park',
-    distance: '4.1 mi',
-    image: 'https://picsum.photos/400/300?random=2',
-  },
-];
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { getSavedEvents, unsaveEvent } from '../services/eventService';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function SavedScreen() {
+  const [savedEvents, setSavedEvents] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const { user } = useAuth();
+
+  const loadSavedEvents = async () => {
+    if (user?.uid) {
+      const events = await getSavedEvents(user.uid);
+      setSavedEvents(events);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedEvents();
+    }, [user])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSavedEvents();
+    setRefreshing(false);
+  };
+
+  const handleUnsave = async (eventId) => {
+    if (user?.uid) {
+      const result = await unsaveEvent(user.uid, eventId);
+      if (result.success) {
+        setSavedEvents(prev => prev.filter(event => event.id !== eventId));
+      }
+    }
+  };
+
   const renderEvent = ({ item }) => (
-    <TouchableOpacity style={styles.eventCard}>
+    <View style={styles.eventCard}>
       <Image source={{ uri: item.image }} style={styles.eventImage} />
+      <TouchableOpacity 
+        style={styles.unsaveButton}
+        onPress={() => handleUnsave(item.id)}
+      >
+        <Ionicons name="heart" size={24} color="#FF6B6B" />
+      </TouchableOpacity>
       <View style={styles.eventInfo}>
         <Text style={styles.eventCategory}>{item.category}</Text>
         <Text style={styles.eventTitle}>{item.title}</Text>
         <Text style={styles.eventDate}>{item.date}</Text>
         <Text style={styles.eventLocation}>{item.location}</Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   const renderEmpty = () => (
@@ -51,11 +72,18 @@ export default function SavedScreen() {
         <Text style={styles.headerTitle}>Saved Events</Text>
       </View>
       <FlatList
-        data={SAVED_EVENTS}
+        data={savedEvents}
         renderItem={renderEvent}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#4ECDC4"
+          />
+        }
       />
     </View>
   );
@@ -94,10 +122,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
   },
   eventImage: {
     width: '100%',
     height: 150,
+  },
+  unsaveButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 20,
+    padding: 8,
   },
   eventInfo: {
     padding: 16,
