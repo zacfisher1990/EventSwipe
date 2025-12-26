@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, RefreshControl, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getSavedEvents, unsaveEvent } from '../services/eventService';
-import { useFocusEffect } from '@react-navigation/native';
+import EventDetailsModal from '../components/EventDetailsModal';
 
 export default function SavedScreen() {
   const [savedEvents, setSavedEvents] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const { user } = useAuth();
 
   const loadSavedEvents = async () => {
@@ -29,31 +31,58 @@ export default function SavedScreen() {
     setRefreshing(false);
   };
 
-  const handleUnsave = async (eventId) => {
+  const handleUnsave = async (eventId, eventTitle = 'this event') => {
+  const doUnsave = async () => {
     if (user?.uid) {
       const result = await unsaveEvent(user.uid, eventId);
       if (result.success) {
         setSavedEvents(prev => prev.filter(event => event.id !== eventId));
+        setSelectedEvent(null);
       }
     }
   };
 
+  if (Platform.OS === 'web') {
+    if (window.confirm(`Remove "${eventTitle}" from saved events?`)) {
+      await doUnsave();
+    }
+  } else {
+    Alert.alert(
+      'Remove Event',
+      `Remove "${eventTitle}" from saved events?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: doUnsave },
+      ]
+    );
+  }
+};
+
+const handleUnsaveFromModal = () => {
+  if (selectedEvent) {
+    handleUnsave(selectedEvent.id, selectedEvent.title);
+  }
+};
   const renderEvent = ({ item }) => (
-    <View style={styles.eventCard}>
+    <TouchableOpacity 
+      style={styles.eventCard}
+      activeOpacity={0.9}
+      onPress={() => setSelectedEvent(item)}
+    >
       <Image source={{ uri: item.image }} style={styles.eventImage} />
       <TouchableOpacity 
         style={styles.unsaveButton}
-        onPress={() => handleUnsave(item.id)}
-        >
+        onPress={() => handleUnsave(item.id, item.title)}
+      >
         <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
-    </TouchableOpacity>
+      </TouchableOpacity>
       <View style={styles.eventInfo}>
-        <Text style={styles.eventCategory}>{item.category}</Text>
+        <Text style={styles.eventCategory}>{item.category?.toUpperCase()}</Text>
         <Text style={styles.eventTitle}>{item.title}</Text>
-        <Text style={styles.eventDate}>{item.date}</Text>
+        <Text style={styles.eventDate}>{item.date} • {item.time}</Text>
         <Text style={styles.eventLocation}>{item.location}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderEmpty = () => (
@@ -84,6 +113,15 @@ export default function SavedScreen() {
             tintColor="#4ECDC4"
           />
         }
+      />
+
+      <EventDetailsModal
+        visible={selectedEvent !== null}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        onSave={() => setSelectedEvent(null)}
+        onPass={handleUnsaveFromModal}
+        isSavedView={true}
       />
     </View>
   );

@@ -140,13 +140,10 @@ export const getEvents = async (userId = null) => {
     }));
     
     // Filter out events the user has already swiped on
-    if (userId) {
-      const swipedIds = await getSwipedEventIds(userId);
-      events = events.filter(event => !swipedIds.includes(event.id));
-      
-      // Also filter out events posted by the user
-      events = events.filter(event => event.posterId !== userId);
-    }
+if (userId) {
+  const swipedIds = await getSwipedEventIds(userId);
+  events = events.filter(event => !swipedIds.includes(event.id));
+}
     
     return { success: true, events };
   } catch (error) {

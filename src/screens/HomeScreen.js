@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
+import EventDetailsModal from '../components/EventDetailsModal';
 
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
@@ -12,6 +13,7 @@ export default function HomeScreen() {
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [filters, setFilters] = useState({
     distance: 25,
     timeRange: 'month',
@@ -42,7 +44,6 @@ export default function HomeScreen() {
     const event = events[index];
     console.log('Passed on:', event?.title);
     
-    // Track that user passed on this event
     if (user?.uid && event) {
       await passEvent(user.uid, event.id);
     }
@@ -80,11 +81,40 @@ export default function HomeScreen() {
     setCardIndex(0);
   };
 
-  const renderCard = (event) => {
+  const handleCardTap = (index) => {
+    setSelectedEvent(events[index]);
+  };
+
+  const handleModalSave = async () => {
+    if (selectedEvent && user?.uid) {
+      const eventToSave = {
+        ...selectedEvent,
+        image: selectedEvent.image && !selectedEvent.image.startsWith('blob:') 
+          ? selectedEvent.image 
+          : `https://picsum.photos/400/300?random=${selectedEvent.id}`,
+      };
+      
+      await saveEvent(user.uid, eventToSave);
+      swiperRef.current?.swipeRight();
+    }
+  };
+
+  const handleModalPass = async () => {
+    if (selectedEvent && user?.uid) {
+      await passEvent(user.uid, selectedEvent.id);
+      swiperRef.current?.swipeLeft();
+    }
+  };
+
+  const renderCard = (event, index) => {
     if (!event) return null;
     
     return (
-      <View style={styles.card}>
+      <TouchableOpacity 
+        activeOpacity={0.95}
+        onPress={() => handleCardTap(index)}
+        style={styles.card}
+      >
         <Image source={{ uri: event.image }} style={styles.cardImage} />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -100,7 +130,10 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-      </View>
+        <View style={styles.tapHint}>
+          <Text style={styles.tapHintText}>Tap for details</Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -222,6 +255,14 @@ export default function HomeScreen() {
         filters={filters}
         onApply={handleApplyFilters}
       />
+
+      <EventDetailsModal
+        visible={selectedEvent !== null}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        onSave={handleModalSave}
+        onPass={handleModalPass}
+      />
     </View>
   );
 }
@@ -335,6 +376,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  tapHint: {
+    position: 'absolute',
+    bottom: 12,
+    alignSelf: 'center',
+  },
+  tapHintText: {
+    fontSize: 12,
+    color: '#bbb',
   },
   loadingState: {
     flex: 1,
