@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen() {
@@ -11,7 +11,7 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -68,7 +68,7 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -94,7 +94,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 40,
   },
   avatarContainer: {
     alignItems: 'center',
@@ -155,7 +158,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 'auto',
+    marginTop: 20,
   },
   signOutText: {
     color: '#fff',

@@ -40,13 +40,6 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#333" />
-            </TouchableOpacity>
-          </View>
-
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Image */}
             <Image source={{ uri: event.image }} style={styles.image} />
@@ -173,21 +166,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
-  },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  closeButton: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 20,
-    padding: 8,
   },
   content: {
     flex: 1,
