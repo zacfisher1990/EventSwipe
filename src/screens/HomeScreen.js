@@ -204,6 +204,7 @@ export default function HomeScreen() {
             backgroundColor={'#f5f5f5'}
             stackSize={3}
             stackSeparation={15}
+            useViewOverflow={false}
             containerStyle={styles.swiperContent}
             overlayLabels={{
               left: {
