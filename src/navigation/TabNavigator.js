@@ -7,6 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PostEventScreen from '../screens/PostEventScreen';
+import ActivityScreen from '../screens/ActivityScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -81,17 +82,17 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Activity"
-        component={SavedScreen}
+        component={ActivityScreen}
         options={{
-          tabBarIcon: ({ focused, color }) => (
+            tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name={focused ? 'notifications' : 'notifications-outline'}
-              size={26}
-              color={color}
+                name={focused ? 'notifications' : 'notifications-outline'}
+                size={26}
+                color={color}
             />
-          ),
+            ),
         }}
-      />
+        />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
