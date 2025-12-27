@@ -16,6 +16,19 @@ import { uploadEventImage } from './storageService';
 import { searchEvents as searchTicketmaster } from './ticketmasterService';
 import { searchEvents as searchPredictHQ } from './predictHQService';
 
+// Calculate distance between two coordinates in miles (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 // Save event to user's saved list
 export const saveEvent = async (userId, event) => {
   try {
@@ -164,6 +177,26 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       const existingIds = new Set(events.map(e => e.id));
       const newEvents = phqResult.events.filter(e => !existingIds.has(e.id));
       events = [...events, ...newEvents];
+    }
+    
+    // Filter by distance if we have user location
+    if (location && filters?.distance) {
+      events = events.filter(event => {
+        // Skip events without coordinates
+        if (!event.latitude || !event.longitude) return true;
+        
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          event.latitude,
+          event.longitude
+        );
+        
+        // Add distance to event for display
+        event.distance = `${Math.round(distance)} mi`;
+        
+        return distance <= filters.distance;
+      });
     }
     
     // Filter out events the user has already swiped on

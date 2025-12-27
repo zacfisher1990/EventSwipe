@@ -23,6 +23,26 @@ const CATEGORY_MAP = {
   'politics': 'other',
 };
 
+// Category-specific placeholder images (using Unsplash source for consistent, relevant images)
+const CATEGORY_IMAGES = {
+  'music': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop', // Concert crowd
+  'comedy': 'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=400&h=300&fit=crop', // Stand-up comedy mic
+  'sports': 'https://images.unsplash.com/photo-1461896836934-28e4c76f6723?w=400&h=300&fit=crop', // Stadium
+  'arts': 'https://images.unsplash.com/photo-1507924538820-ede94a04019d?w=400&h=300&fit=crop', // Theater seats
+  'family': 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400&h=300&fit=crop', // Family fun
+  'food': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop', // Restaurant dining
+  'nightlife': 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=400&h=300&fit=crop', // Night club
+  'fitness': 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=400&h=300&fit=crop', // Gym/fitness
+  'outdoor': 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=300&fit=crop', // Festival outdoor
+  'networking': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop', // Conference
+  'other': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&h=300&fit=crop', // Generic event
+};
+
+// Get placeholder image based on category
+const getCategoryImage = (category) => {
+  return CATEGORY_IMAGES[category] || CATEGORY_IMAGES['other'];
+};
+
 // Map PredictHQ categories to display names
 const CATEGORY_DISPLAY = {
   'concerts': 'Music',
@@ -151,7 +171,7 @@ const transformEvent = (phqEvent) => {
     categoryDisplay: smartCategory.display,
     genre: '',
     price: 'Check event',
-    image: `https://picsum.photos/400/300?random=${phqEvent.id}`, // PredictHQ doesn't provide images
+    image: getCategoryImage(smartCategory.category), // Category-specific placeholder image
     ticketUrl: '', // We'll use Google search fallback
     description: phqEvent.description || `Sourced from predicthq.com`,
     source: 'predicthq',
