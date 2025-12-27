@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
+import { searchEvents } from './ticketmasterService';
 
 // Save event to user's saved list
 export const saveEvent = async (userId, event) => {
@@ -124,7 +125,7 @@ export const createEvent = async (eventData, userId, imageUri = null) => {
 };
 
 // Get all active events (excluding ones user has swiped)
-export const getEvents = async (userId = null) => {
+export const getEvents = async (userId = null, location = null) => {
   try {
     const eventsRef = collection(db, 'events');
     const q = query(
@@ -139,11 +140,30 @@ export const getEvents = async (userId = null) => {
       ...doc.data(),
     }));
     
+    
+    
+    // Always fetch from Ticketmaster to supplement
+    
+    const tmOptions = location 
+      ? { latitude: location.latitude, longitude: location.longitude, radius: 50 }
+      : {};
+    
+    const tmResult = await searchEvents(tmOptions);
+    
+    
+    if (tmResult.success && tmResult.events.length > 0) {
+      const existingIds = new Set(events.map(e => e.id));
+      const newEvents = tmResult.events.filter(e => !existingIds.has(e.id));
+      events = [...events, ...newEvents];
+      
+    }
+    
     // Filter out events the user has already swiped on
-if (userId) {
-  const swipedIds = await getSwipedEventIds(userId);
-  events = events.filter(event => !swipedIds.includes(event.id));
-}
+    if (userId) {
+      const swipedIds = await getSwipedEventIds(userId);
+      events = events.filter(event => !swipedIds.includes(event.id));
+      
+    }
     
     return { success: true, events };
   } catch (error) {

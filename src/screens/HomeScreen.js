@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
+import * as Location from 'expo-location';
 
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
@@ -24,15 +25,32 @@ export default function HomeScreen() {
   const swiperRef = useRef(null);
 
   const loadEvents = async () => {
-    setLoading(true);
-    const result = await getEvents(user?.uid);
-    if (result.success) {
-      setEvents(result.events);
-      setAllSwiped(result.events.length === 0);
-      setCardIndex(0);
+  setLoading(true);
+  
+  // Try to get user's location
+  let location = null;
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status === 'granted') {
+      const position = await Location.getCurrentPositionAsync({});
+      location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      console.log('User location:', location);
     }
-    setLoading(false);
-  };
+  } catch (error) {
+    console.log('Could not get location:', error);
+  }
+  
+  const result = await getEvents(user?.uid, location);
+  if (result.success) {
+    setEvents(result.events);
+    setAllSwiped(result.events.length === 0);
+    setCardIndex(0);
+  }
+  setLoading(false);
+};
 
   useFocusEffect(
     useCallback(() => {
