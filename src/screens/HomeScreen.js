@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import * as Location from 'expo-location';
+import { submitReport } from '../services/reportService';
 
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
@@ -119,6 +120,15 @@ export default function HomeScreen() {
       swiperRef.current?.swipeRight();
     }
   };
+
+  const handleReport = async (event, reason, details) => {
+  if (!user?.uid) {
+    Alert.alert('Sign in required', 'Please sign in to report events.');
+    return;
+  }
+  await submitReport(event.id, user.uid, reason, details, event);
+};
+
 
   const handleModalPass = async () => {
     if (selectedEvent && user?.uid) {
@@ -304,6 +314,7 @@ export default function HomeScreen() {
         onClose={() => setSelectedEvent(null)}
         onSave={handleModalSave}
         onPass={handleModalPass}
+        onReport={handleReport}
       />
     </View>
   );
