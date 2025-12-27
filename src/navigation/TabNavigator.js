@@ -1,25 +1,14 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PostEventScreen from '../screens/PostEventScreen';
 
 const Tab = createBottomTabNavigator();
-
-const getBottomPadding = () => {
-  if (Platform.OS === 'web') return 16;
-  if (Platform.OS === 'ios') return 24;
-  return 12;
-};
-
-const getTabBarHeight = () => {
-  if (Platform.OS === 'web') return 70;
-  if (Platform.OS === 'ios') return 84;
-  return 68;
-};
 
 const CustomPlusButton = ({ onPress }) => (
   <TouchableOpacity style={styles.plusButtonContainer} onPress={onPress}>
@@ -30,6 +19,8 @@ const CustomPlusButton = ({ onPress }) => (
 );
 
 export default function TabNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -39,9 +30,8 @@ export default function TabNavigator() {
           borderTopWidth: 1,
           borderTopColor: '#eee',
           paddingTop: 8,
-          paddingBottom: getBottomPadding(),
-          height: getTabBarHeight(),
-          position: 'relative',
+          paddingBottom: insets.bottom + 10,
+          height: 60 + insets.bottom,
         },
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: '#999',
