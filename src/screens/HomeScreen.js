@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -24,7 +24,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const swiperRef = useRef(null);
 
-  const loadEvents = async () => {
+  const loadEvents = async (currentFilters = filters) => {
   setLoading(true);
   
   // Try to get user's location
@@ -43,7 +43,8 @@ export default function HomeScreen() {
     console.log('Could not get location:', error);
   }
   
-  const result = await getEvents(user?.uid, location);
+  // Pass filters to getEvents
+  const result = await getEvents(user?.uid, location, currentFilters);
   if (result.success) {
     setEvents(result.events);
     setAllSwiped(result.events.length === 0);
@@ -97,6 +98,8 @@ export default function HomeScreen() {
     console.log('Applied filters:', newFilters);
     setAllSwiped(false);
     setCardIndex(0);
+    // Reload events with new filters
+    loadEvents(newFilters);
   };
 
   const handleCardTap = (index) => {
@@ -127,6 +130,17 @@ export default function HomeScreen() {
   const renderCard = (event, index) => {
     if (!event) return null;
     
+    const handleTicketPress = (e) => {
+      e.stopPropagation(); // Prevent card tap
+      if (event.ticketUrl) {
+        Linking.openURL(event.ticketUrl);
+      } else {
+        // Fallback: search for tickets on Google
+        const searchQuery = encodeURIComponent(`${event.title} tickets ${event.location}`);
+        Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
+      }
+    };
+    
     return (
       <TouchableOpacity 
         activeOpacity={0.95}
@@ -136,13 +150,17 @@ export default function HomeScreen() {
         <Image source={{ uri: event.image }} style={styles.cardImage} />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={styles.category}>{event.category?.toUpperCase()}</Text>
-            <Text style={styles.distance}>{event.distance || ''}</Text>
+            <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
+            {event.source === 'ticketmaster' && (
+              <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
+                <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.title}>{event.title}</Text>
           <Text style={styles.date}>{event.date} • {event.time}</Text>
           <Text style={styles.location}>{event.location}</Text>
-          {event.price && (
+          {event.price && event.price !== 'See tickets' && (
             <View style={styles.priceTag}>
               <Text style={styles.priceText}>{event.price}</Text>
             </View>
@@ -395,6 +413,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  ticketButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  ticketButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
   tapHint: {
     position: 'absolute',

@@ -18,6 +18,10 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
   const handleGetTickets = () => {
     if (event.ticketUrl) {
       Linking.openURL(event.ticketUrl);
+    } else {
+      // Fallback: search for tickets on Google
+      const searchQuery = encodeURIComponent(`${event.title} tickets ${event.location}`);
+      Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
     }
   };
 
@@ -47,12 +51,12 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             {/* Category & Price */}
             <View style={styles.tagRow}>
               <View style={styles.categoryTag}>
-                <Text style={styles.categoryText}>{event.category?.toUpperCase()}</Text>
+                <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
               </View>
-              {event.price && (
-                <View style={styles.priceTag}>
-                  <Text style={styles.priceText}>{event.price}</Text>
-                </View>
+              {event.source === 'ticketmaster' && (
+                <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
+                  <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
+                </TouchableOpacity>
               )}
             </View>
 
@@ -94,10 +98,10 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             )}
 
             {/* Ticket Button */}
-            {event.ticketUrl && (
+            {event.source === 'ticketmaster' && (
               <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
                 <Ionicons name="ticket-outline" size={20} color="#fff" />
-                <Text style={styles.ticketButtonText}>Get Tickets</Text>
+                <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}</Text>
               </TouchableOpacity>
             )}
 

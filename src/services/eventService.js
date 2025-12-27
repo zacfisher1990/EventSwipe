@@ -125,7 +125,7 @@ export const createEvent = async (eventData, userId, imageUri = null) => {
 };
 
 // Get all active events (excluding ones user has swiped)
-export const getEvents = async (userId = null, location = null) => {
+export const getEvents = async (userId = null, location = null, filters = null) => {
   try {
     const eventsRef = collection(db, 'events');
     const q = query(
@@ -143,9 +143,9 @@ export const getEvents = async (userId = null, location = null) => {
     
     
     // Always fetch from Ticketmaster to supplement
-    
+    const radius = filters?.distance || 50;
     const tmOptions = location 
-      ? { latitude: location.latitude, longitude: location.longitude, radius: 50 }
+      ? { latitude: location.latitude, longitude: location.longitude, radius }
       : {};
     
     const tmResult = await searchEvents(tmOptions);
@@ -163,6 +163,56 @@ export const getEvents = async (userId = null, location = null) => {
       const swipedIds = await getSwipedEventIds(userId);
       events = events.filter(event => !swipedIds.includes(event.id));
       
+    }
+    
+    // Apply category filters
+    if (filters?.categories && filters.categories.length > 0) {
+      events = events.filter(event => {
+        const eventCategory = (event.category || '').toLowerCase();
+        return filters.categories.includes(eventCategory);
+      });
+    }
+    
+    // Apply time range filter
+    if (filters?.timeRange) {
+      const now = new Date();
+      let endDate = new Date();
+      
+      switch (filters.timeRange) {
+        case 'today':
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'tomorrow':
+          endDate.setDate(endDate.getDate() + 1);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'week':
+          endDate.setDate(endDate.getDate() + 7);
+          break;
+        case 'weekend':
+          // Find next Sunday
+          const daysUntilSunday = 7 - now.getDay();
+          endDate.setDate(endDate.getDate() + daysUntilSunday);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'month':
+          endDate.setMonth(endDate.getMonth() + 1);
+          break;
+        case '3months':
+          endDate.setMonth(endDate.getMonth() + 3);
+          break;
+        case 'year':
+          endDate.setFullYear(endDate.getFullYear() + 1);
+          break;
+        default:
+          endDate.setMonth(endDate.getMonth() + 1);
+      }
+      
+      events = events.filter(event => {
+        if (!event.date) return true; // Keep events without dates
+        const eventDate = new Date(event.date);
+        return eventDate >= now && eventDate <= endDate;
+      });
     }
     
     return { success: true, events };
