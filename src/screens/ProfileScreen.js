@@ -1,9 +1,159 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  Platform,
+  Linking 
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { getSavedEvents, getSwipedEventIds } from '../services/eventService';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { deleteUser } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const [stats, setStats] = useState({ saved: 0, swiped: 0 });
+  const [loading, setLoading] = useState(false);
+
+  const loadStats = async () => {
+    if (!user?.uid) return;
+    
+    const saved = await getSavedEvents(user.uid);
+    const swiped = await getSwipedEventIds(user.uid);
+    
+    setStats({
+      saved: saved.length,
+      swiped: swiped.length,
+    });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [user])
+  );
+
+  const handleResetSwiped = async () => {
+    const doReset = async () => {
+      setLoading(true);
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          swipedEvents: []
+        });
+        setStats(prev => ({ ...prev, swiped: 0 }));
+        
+        if (Platform.OS === 'web') {
+          window.alert('Swiped events have been reset. You can now see all events again!');
+        } else {
+          Alert.alert('Success', 'Swiped events have been reset. You can now see all events again!');
+        }
+      } catch (error) {
+        console.error('Error resetting swiped events:', error);
+        if (Platform.OS === 'web') {
+          window.alert('Failed to reset. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to reset. Please try again.');
+        }
+      }
+      setLoading(false);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('This will reset all your swiped events so you can see them again. Continue?')) {
+        await doReset();
+      }
+    } else {
+      Alert.alert(
+        'Reset Swiped Events',
+        'This will reset all your swiped events so you can see them again. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Reset', onPress: doReset },
+        ]
+      );
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const doDelete = async () => {
+      setLoading(true);
+      try {
+        // Delete user data from Firestore
+        const userRef = doc(db, 'users', user.uid);
+        await deleteDoc(userRef);
+        
+        // Delete Firebase auth account
+        await deleteUser(auth.currentUser);
+        
+      } catch (error) {
+        console.error('Error deleting account:', error);
+        
+        // If error is due to requiring recent login
+        if (error.code === 'auth/requires-recent-login') {
+          if (Platform.OS === 'web') {
+            window.alert('For security, please sign out and sign back in, then try deleting your account again.');
+          } else {
+            Alert.alert(
+              'Re-authentication Required', 
+              'For security, please sign out and sign back in, then try deleting your account again.'
+            );
+          }
+        } else {
+          if (Platform.OS === 'web') {
+            window.alert('Failed to delete account. Please try again.');
+          } else {
+            Alert.alert('Error', 'Failed to delete account. Please try again.');
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.')) {
+        await doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Account',
+        'Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
+  };
+
+  const handleSupport = () => {
+    Linking.openURL('mailto:support@eventswipeapp.com?subject=EventSwipe Support Request');
+  };
+
+  const handleSignOut = async () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        await signOut();
+      }
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', onPress: signOut },
+        ]
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -12,62 +162,80 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.avatarContainer}>
+        {/* User Info */}
+        <View style={styles.userCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
           <Text style={styles.email}>{user?.email}</Text>
+          
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.saved}</Text>
+              <Text style={styles.statLabel}>Saved</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.swiped}</Text>
+              <Text style={styles.statLabel}>Swiped</Text>
+            </View>
+          </View>
         </View>
 
+        {/* Preferences Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🔔</Text>
-            <Text style={styles.menuText}>Notifications</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📍</Text>
-            <Text style={styles.menuText}>Location Settings</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🎯</Text>
-            <Text style={styles.menuText}>Interest Categories</Text>
-            <Text style={styles.menuArrow}>›</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={handleResetSwiped} disabled={loading}>
+            <View style={[styles.menuIcon, { backgroundColor: '#E8FAF8' }]}>
+              <Ionicons name="refresh-outline" size={20} color="#4ECDC4" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuText}>Reset Swiped Events</Text>
+              <Text style={styles.menuSubtext}>See events you've already swiped on</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
 
+        {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>👤</Text>
-            <Text style={styles.menuText}>Edit Profile</Text>
-            <Text style={styles.menuArrow}>›</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
+            <View style={[styles.menuIcon, { backgroundColor: '#FFF3E8' }]}>
+              <Ionicons name="help-circle-outline" size={20} color="#FF9F43" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuText}>Help & Support</Text>
+              <Text style={styles.menuSubtext}>Get help or send feedback</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🔒</Text>
-            <Text style={styles.menuText}>Privacy</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>❓</Text>
-            <Text style={styles.menuText}>Help & Support</Text>
-            <Text style={styles.menuArrow}>›</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount} disabled={loading}>
+            <View style={[styles.menuIcon, { backgroundColor: '#FFE8E8' }]}>
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuText, { color: '#FF6B6B' }]}>Delete Account</Text>
+              <Text style={styles.menuSubtext}>Permanently delete your account</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} disabled={loading}>
+          <Ionicons name="log-out-outline" size={20} color="#fff" />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* App Version */}
+        <Text style={styles.version}>EventSwipe v1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -99,9 +267,17 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  avatarContainer: {
+  userCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   avatar: {
     width: 80,
@@ -120,6 +296,30 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#eee',
   },
   section: {
     marginBottom: 24,
@@ -141,28 +341,45 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   menuIcon: {
-    fontSize: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  menuText: {
+  menuContent: {
     flex: 1,
+  },
+  menuText: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#333',
   },
-  menuArrow: {
-    fontSize: 20,
-    color: '#ccc',
+  menuSubtext: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 2,
   },
   signOutButton: {
+    flexDirection: 'row',
     backgroundColor: '#FF6B6B',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 8,
   },
   signOutText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  version: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 12,
+    marginTop: 24,
   },
 });
