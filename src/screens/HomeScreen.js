@@ -133,10 +133,15 @@ export default function HomeScreen() {
     const handleTicketPress = (e) => {
       e.stopPropagation(); // Prevent card tap
       if (event.ticketUrl) {
+        // Has direct link - use it
         Linking.openURL(event.ticketUrl);
+      } else if (event.source === 'ticketmaster') {
+        // Ticketmaster event without URL - search Ticketmaster
+        const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''}`);
+        Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
       } else {
-        // Fallback: search for tickets on Google
-        const searchQuery = encodeURIComponent(`${event.title} tickets ${event.location}`);
+        // PredictHQ or other - search Google for the event
+        const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
         Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
       }
     };
@@ -151,7 +156,7 @@ export default function HomeScreen() {
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
-            {event.source === 'ticketmaster' && (
+            {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
               <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
                 <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
               </TouchableOpacity>

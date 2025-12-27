@@ -13,7 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
-import { searchEvents } from './ticketmasterService';
+import { searchEvents as searchTicketmaster } from './ticketmasterService';
+import { searchEvents as searchPredictHQ } from './predictHQService';
 
 // Save event to user's saved list
 export const saveEvent = async (userId, event) => {
@@ -140,29 +141,35 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       ...doc.data(),
     }));
     
-    
-    
-    // Always fetch from Ticketmaster to supplement
     const radius = filters?.distance || 50;
-    const tmOptions = location 
+    const apiOptions = location 
       ? { latitude: location.latitude, longitude: location.longitude, radius }
       : {};
     
-    const tmResult = await searchEvents(tmOptions);
+    // Fetch from both Ticketmaster and PredictHQ in parallel
+    const [tmResult, phqResult] = await Promise.all([
+      searchTicketmaster(apiOptions),
+      searchPredictHQ(apiOptions),
+    ]);
     
-    
+    // Add Ticketmaster events
     if (tmResult.success && tmResult.events.length > 0) {
       const existingIds = new Set(events.map(e => e.id));
       const newEvents = tmResult.events.filter(e => !existingIds.has(e.id));
       events = [...events, ...newEvents];
-      
+    }
+    
+    // Add PredictHQ events
+    if (phqResult.success && phqResult.events.length > 0) {
+      const existingIds = new Set(events.map(e => e.id));
+      const newEvents = phqResult.events.filter(e => !existingIds.has(e.id));
+      events = [...events, ...newEvents];
     }
     
     // Filter out events the user has already swiped on
     if (userId) {
       const swipedIds = await getSwipedEventIds(userId);
       events = events.filter(event => !swipedIds.includes(event.id));
-      
     }
     
     // Apply category filters
@@ -214,6 +221,18 @@ export const getEvents = async (userId = null, location = null, filters = null) 
         return eventDate >= now && eventDate <= endDate;
       });
     }
+    
+    // Sort events by date (soonest first)
+    events.sort((a, b) => {
+      // Events without dates go to the end
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      
+      const dateA = new Date(a.date + (a.time ? `T${a.time}` : ''));
+      const dateB = new Date(b.date + (b.time ? `T${b.time}` : ''));
+      
+      return dateA - dateB;
+    });
     
     return { success: true, events };
   } catch (error) {

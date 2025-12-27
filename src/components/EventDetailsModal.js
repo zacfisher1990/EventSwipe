@@ -17,10 +17,15 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
 
   const handleGetTickets = () => {
     if (event.ticketUrl) {
+      // Has direct link - use it
       Linking.openURL(event.ticketUrl);
+    } else if (event.source === 'ticketmaster') {
+      // Ticketmaster event without URL - search Ticketmaster
+      const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''}`);
+      Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
     } else {
-      // Fallback: search for tickets on Google
-      const searchQuery = encodeURIComponent(`${event.title} tickets ${event.location}`);
+      // PredictHQ or other - search Google for the event
+      const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
       Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
     }
   };
@@ -53,7 +58,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               <View style={styles.categoryTag}>
                 <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
               </View>
-              {event.source === 'ticketmaster' && (
+              {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
                 <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
                   <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
                 </TouchableOpacity>
@@ -98,7 +103,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             )}
 
             {/* Ticket Button */}
-            {event.source === 'ticketmaster' && (
+            {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
               <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
                 <Ionicons name="ticket-outline" size={20} color="#fff" />
                 <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}</Text>
