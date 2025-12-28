@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,12 +13,13 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  PanResponder,
   Dimensions,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const DISMISS_THRESHOLD = 150;
 
 // Report reasons
 const REPORT_REASONS = [
@@ -198,46 +199,103 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
 // Main EventDetailsModal Component
 export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
-  const translateY = useRef(new Animated.Value(0)).current;
-  const scrollOffset = useRef(0);
-  const scrollViewRef = useRef(null);
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const isClosing = useRef(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only activate if swiping down and scroll is at top
-        return gestureState.dy > 10 && scrollOffset.current <= 0;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-          // Close the modal
-          Animated.timing(translateY, {
-            toValue: SCREEN_HEIGHT,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            translateY.setValue(0);
-            onClose();
-          });
-        } else {
-          // Snap back
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
+  // Handle open/close animations
+  useEffect(() => {
+    if (visible) {
+      isClosing.current = false;
+      // Animate in
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 200,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
 
-  const handleScroll = (event) => {
-    scrollOffset.current = event.nativeEvent.contentOffset.y;
+  const handleClose = () => {
+    if (isClosing.current) return;
+    isClosing.current = true;
+    
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      translateY.setValue(SCREEN_HEIGHT);
+      onClose();
+    });
+  };
+
+  // Handle drag on the handle area
+  const handleDragStart = useRef({ y: 0 });
+  
+  const onHandleTouchStart = (e) => {
+    handleDragStart.current.y = e.nativeEvent.pageY;
+  };
+
+  const onHandleTouchMove = (e) => {
+    const currentY = e.nativeEvent.pageY;
+    const dy = currentY - handleDragStart.current.y;
+    
+    if (dy > 0) {
+      translateY.setValue(dy);
+      // Fade backdrop as we drag
+      const opacity = 1 - (dy / SCREEN_HEIGHT);
+      backdropOpacity.setValue(Math.max(0, opacity));
+    }
+  };
+
+  const onHandleTouchEnd = (e) => {
+    const currentY = e.nativeEvent.pageY;
+    const dy = currentY - handleDragStart.current.y;
+    
+    if (dy > DISMISS_THRESHOLD) {
+      handleClose();
+    } else {
+      // Snap back
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  };
+
+  // Handle scroll-based dismiss
+  const onScrollEndDrag = (e) => {
+    const offsetY = e.nativeEvent.contentOffset.y;
+    const velocityY = e.nativeEvent.velocity?.y || 0;
+    
+    // If at top and pulling down with velocity, dismiss
+    if (offsetY <= 0 && velocityY < -1.5) {
+      handleClose();
+    }
   };
 
   if (!event) return null;
@@ -288,133 +346,148 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent={true}
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <Animated.View 
-          style={[
-            styles.container,
-            { transform: [{ translateY }] }
-          ]}
-          {...panResponder.panHandlers}
+      {/* Backdrop */}
+      <Animated.View 
+        style={[
+          styles.backdrop,
+          { opacity: backdropOpacity }
+        ]}
+      >
+        <TouchableWithoutFeedback onPress={handleClose}>
+          <View style={styles.backdropTouchable} />
+        </TouchableWithoutFeedback>
+      </Animated.View>
+
+      {/* Modal Content */}
+      <Animated.View 
+        style={[
+          styles.container,
+          { transform: [{ translateY }] }
+        ]}
+      >
+        {/* Drag Handle - Large touch target */}
+        <View 
+          style={styles.handleArea}
+          onTouchStart={onHandleTouchStart}
+          onTouchMove={onHandleTouchMove}
+          onTouchEnd={onHandleTouchEnd}
         >
-          {/* Swipe indicator */}
-          <View style={styles.swipeIndicator}>
-            <View style={styles.swipeBar} />
+          <View style={styles.swipeBar} />
+        </View>
+
+        {/* Report button in top right */}
+        <TouchableOpacity 
+          style={styles.reportButton}
+          onPress={() => setReportModalVisible(true)}
+        >
+          <Ionicons name="flag-outline" size={20} color="#666" />
+        </TouchableOpacity>
+
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          onScrollEndDrag={onScrollEndDrag}
+          scrollEventThrottle={16}
+          bounces={true}
+          overScrollMode="always"
+        >
+          {/* Image */}
+          <Image source={{ uri: event.image }} style={styles.image} />
+
+          {/* Category & Price */}
+          <View style={styles.tagRow}>
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
+            </View>
+            {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
+              <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
+                <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Report button in top right */}
-          <TouchableOpacity 
-            style={styles.reportButton}
-            onPress={() => setReportModalVisible(true)}
-          >
-            <Ionicons name="flag-outline" size={20} color="#666" />
+          {/* Title */}
+          <Text style={styles.title}>{event.title}</Text>
+
+          {/* Date & Time */}
+          <View style={styles.infoRow}>
+            <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
+            <Text style={styles.infoText}>{event.date} • {event.time}</Text>
+          </View>
+
+          {/* Location */}
+          <TouchableOpacity style={styles.infoRow} onPress={handleGetDirections}>
+            <Ionicons name="location-outline" size={20} color="#4ECDC4" />
+            <View style={styles.locationInfo}>
+              <Text style={styles.infoText}>{event.location}</Text>
+              {event.address && (
+                <Text style={styles.addressText}>{event.address}</Text>
+              )}
+              <Text style={styles.directionsLink}>Get directions →</Text>
+            </View>
           </TouchableOpacity>
 
-          <ScrollView 
-            ref={scrollViewRef}
-            style={styles.content} 
-            showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            bounces={false}
-          >
-            {/* Image */}
-            <Image source={{ uri: event.image }} style={styles.image} />
-
-            {/* Category & Price */}
-            <View style={styles.tagRow}>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
-              </View>
-              {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
-                <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
-                  <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
-                </TouchableOpacity>
-              )}
+          {/* Description */}
+          {event.description && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.description}>{event.description}</Text>
             </View>
+          )}
 
-            {/* Title */}
-            <Text style={styles.title}>{event.title}</Text>
-
-            {/* Date & Time */}
-            <View style={styles.infoRow}>
-              <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
-              <Text style={styles.infoText}>{event.date} • {event.time}</Text>
-            </View>
-
-            {/* Location */}
-            <TouchableOpacity style={styles.infoRow} onPress={handleGetDirections}>
-              <Ionicons name="location-outline" size={20} color="#4ECDC4" />
-              <View style={styles.locationInfo}>
-                <Text style={styles.infoText}>{event.location}</Text>
-                {event.address && (
-                  <Text style={styles.addressText}>{event.address}</Text>
-                )}
-                <Text style={styles.directionsLink}>Get directions →</Text>
-              </View>
+          {/* Get Tickets Button */}
+          {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
+            <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
+              <Ionicons name="ticket-outline" size={24} color="#fff" />
+              <Text style={styles.ticketButtonText}>
+                {event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}
+              </Text>
             </TouchableOpacity>
+          )}
 
-            {/* Description */}
-            {event.description && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About</Text>
-                <Text style={styles.description}>{event.description}</Text>
-              </View>
-            )}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
 
-            {/* Get Tickets Button */}
-            {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
-              <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
-                <Ionicons name="ticket-outline" size={24} color="#fff" />
-                <Text style={styles.ticketButtonText}>
-                  {event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.bottomPadding} />
-          </ScrollView>
-
-          {/* Action Bar */}
-          <View style={styles.actionBar}>
-            {isSavedView ? (
-              // Just close button for saved view
+        {/* Action Bar */}
+        <View style={styles.actionBar}>
+          {isSavedView ? (
+            // Just close button for saved view
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.closeButtonStyle]}
+              onPress={handleClose}
+            >
+              <Ionicons name="close" size={32} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            // Pass and Save buttons for discover view
+            <>
               <TouchableOpacity 
-                style={[styles.actionButton, styles.closeButtonStyle]}
-                onPress={onClose}
+                style={[styles.actionButton, styles.passButton]}
+                onPress={() => {
+                  onPass();
+                  handleClose();
+                }}
               >
-                <Ionicons name="close" size={32} color="#666" />
+                <Ionicons name="close" size={32} color="#FF6B6B" />
               </TouchableOpacity>
-            ) : (
-              // Pass and Save buttons for discover view
-              <>
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.passButton]}
-                  onPress={() => {
-                    onPass();
-                    onClose();
-                  }}
-                >
-                  <Ionicons name="close" size={32} color="#FF6B6B" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.saveButton]}
-                  onPress={() => {
-                    onSave();
-                    onClose();
-                  }}
-                >
-                  <Ionicons name="heart" size={32} color="#4ECDC4" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </Animated.View>
-      </View>
+              
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.saveButton]}
+                onPress={() => {
+                  onSave();
+                  handleClose();
+                }}
+              >
+                <Ionicons name="heart" size={32} color="#4ECDC4" />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </Animated.View>
 
       {/* Report Modal */}
       <ReportModal
@@ -428,27 +501,36 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  },
+  backdropTouchable: {
+    flex: 1,
   },
   container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '90%',
   },
-  swipeIndicator: {
+  handleArea: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    // Make the touch target larger
+    minHeight: 44,
   },
   swipeBar: {
-    width: 40,
-    height: 4,
+    width: 48,
+    height: 5,
     backgroundColor: '#ddd',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   reportButton: {
     position: 'absolute',

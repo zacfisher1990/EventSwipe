@@ -6,6 +6,49 @@ import { useAuth } from '../context/AuthContext';
 import { getSavedEvents, unsaveEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
 
+// Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
+const parseEventDate = (dateString) => {
+  if (!dateString) return null;
+  
+  // Try YYYY-MM-DD format first (API events)
+  if (dateString.includes('-') && dateString.indexOf('-') === 4) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (year && month && day) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Try MM/DD/YYYY format (Firebase user-posted events)
+  if (dateString.includes('/')) {
+    const [month, day, year] = dateString.split('/').map(Number);
+    if (month && day && year) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Fallback: let JS try to parse it
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+// Filter out past events and sort by date
+const filterAndSortEvents = (events) => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Start of today
+  
+  return events
+    .filter(event => {
+      if (!event.date) return false;
+      const eventDate = parseEventDate(event.date);
+      return eventDate && eventDate >= now;
+    })
+    .sort((a, b) => {
+      const dateA = parseEventDate(a.date);
+      const dateB = parseEventDate(b.date);
+      return (dateA || 0) - (dateB || 0);
+    });
+};
+
 export default function SavedScreen() {
   const [savedEvents, setSavedEvents] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -15,7 +58,9 @@ export default function SavedScreen() {
   const loadSavedEvents = async () => {
     if (user?.uid) {
       const events = await getSavedEvents(user.uid);
-      setSavedEvents(events);
+      // Filter out past events and sort by date (soonest first)
+      const upcomingEvents = filterAndSortEvents(events);
+      setSavedEvents(upcomingEvents);
     }
   };
 

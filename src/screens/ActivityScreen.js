@@ -11,7 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { getUserEvents, getSavedEvents } from '../services/eventService';
+import { getUserEvents, getSavedEvents, unsaveEvent } from '../services/eventService';
+import EventDetailsModal from '../components/EventDetailsModal';
 
 // Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
 const parseEventDate = (dateString) => {
@@ -43,6 +44,7 @@ export default function ActivityScreen() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [postedEvents, setPostedEvents] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const { user } = useAuth();
 
   const loadData = async () => {
@@ -50,7 +52,6 @@ export default function ActivityScreen() {
 
     // Load saved events (for upcoming reminders)
     const saved = await getSavedEvents(user.uid);
-    console.log('Saved events from Firebase:', saved.length, saved);
     
     // Filter to only future events and sort by date
     const now = new Date();
@@ -58,12 +59,8 @@ export default function ActivityScreen() {
     
     const upcoming = saved
       .filter(event => {
-        if (!event.date) {
-          console.log('Event has no date:', event.title);
-          return false;
-        }
+        if (!event.date) return false;
         const eventDate = parseEventDate(event.date);
-        console.log(`Event "${event.title}" date: ${event.date} -> parsed: ${eventDate}, now: ${now}, isFuture: ${eventDate && eventDate >= now}`);
         return eventDate && eventDate >= now;
       })
       .sort((a, b) => {
@@ -93,6 +90,15 @@ export default function ActivityScreen() {
     setRefreshing(false);
   };
 
+  const handleUnsaveEvent = async () => {
+    if (selectedEvent && user?.uid) {
+      await unsaveEvent(user.uid, selectedEvent.id);
+      // Remove from local state
+      setUpcomingEvents(prev => prev.filter(e => e.id !== selectedEvent.id));
+      setSelectedEvent(null);
+    }
+  };
+
   const getDaysUntil = (dateString) => {
     const eventDate = parseEventDate(dateString);
     if (!eventDate) return 'Date TBD';
@@ -109,7 +115,11 @@ export default function ActivityScreen() {
   };
 
   const renderUpcomingEvent = ({ item }) => (
-    <View style={styles.eventCard}>
+    <TouchableOpacity 
+      style={styles.eventCard}
+      onPress={() => setSelectedEvent(item)}
+      activeOpacity={0.7}
+    >
       <Image source={{ uri: item.image }} style={styles.eventImage} />
       <View style={styles.eventInfo}>
         <View style={styles.reminderBadge}>
@@ -120,11 +130,15 @@ export default function ActivityScreen() {
         <Text style={styles.eventDate}>{item.date} • {item.time}</Text>
         <Text style={styles.eventLocation} numberOfLines={1}>{item.location}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderPostedEvent = ({ item }) => (
-    <View style={styles.eventCard}>
+    <TouchableOpacity 
+      style={styles.eventCard}
+      onPress={() => setSelectedEvent(item)}
+      activeOpacity={0.7}
+    >
       <Image source={{ uri: item.image }} style={styles.eventImage} />
       <View style={styles.eventInfo}>
         <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
@@ -140,7 +154,7 @@ export default function ActivityScreen() {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderEmptyUpcoming = () => (
@@ -231,6 +245,16 @@ export default function ActivityScreen() {
           }
         />
       )}
+
+      {/* Event Details Modal */}
+      <EventDetailsModal
+        visible={selectedEvent !== null}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        onSave={() => {}} // Already saved, no action needed
+        onPass={activeTab === 'upcoming' ? handleUnsaveEvent : () => setSelectedEvent(null)}
+        isSavedView={true} // Always show close button in Activity screen
+      />
     </View>
   );
 }
