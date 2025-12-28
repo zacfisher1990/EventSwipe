@@ -111,6 +111,34 @@ const VALID_FILTER_CATEGORIES = [
 ];
 
 // ============================================================
+// DATE PARSING HELPER
+// ============================================================
+// Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
+const parseEventDate = (dateString) => {
+  if (!dateString) return null;
+  
+  // Try YYYY-MM-DD format first (API events)
+  if (dateString.includes('-') && dateString.indexOf('-') === 4) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (year && month && day) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Try MM/DD/YYYY format (Firebase user-posted events)
+  if (dateString.includes('/')) {
+    const [month, day, year] = dateString.split('/').map(Number);
+    if (month && day && year) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Fallback: let JS try to parse it
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+// ============================================================
 // TIME RANGE HELPERS
 // ============================================================
 const getTimeRangeDates = (timeRange) => {
@@ -442,18 +470,11 @@ export const getEvents = async (userId = null, location = null, filters = null) 
           return false;
         }
         
-        // Parse the date (handle both "2024-01-15" and full ISO strings)
-        let eventDate;
-        if (event.date.includes('T')) {
-          eventDate = new Date(event.date);
-        } else {
-          // Date only string - parse as local date
-          const [year, month, day] = event.date.split('-').map(Number);
-          eventDate = new Date(year, month - 1, day);
-        }
+        // Parse the date using our flexible parser
+        const eventDate = parseEventDate(event.date);
         
         // Check if date is valid
-        if (isNaN(eventDate.getTime())) {
+        if (!eventDate) {
           console.log(`Invalid date for event: "${event.title}" - date: "${event.date}"`);
           return false;
         }
@@ -471,18 +492,21 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       if (!a.date) return 1;
       if (!b.date) return -1;
       
-      // Create comparable dates
-      const parseDate = (event) => {
-        if (event.date.includes('T')) {
-          return new Date(event.date);
-        }
-        const dateStr = event.time 
-          ? `${event.date}T${event.time}` 
-          : event.date;
-        return new Date(dateStr);
-      };
+      // Parse dates and add time if available
+      let dateA = parseEventDate(a.date);
+      let dateB = parseEventDate(b.date);
       
-      return parseDate(a) - parseDate(b);
+      // Add time component if available
+      if (dateA && a.time) {
+        const [hours, minutes] = a.time.split(':').map(Number);
+        dateA.setHours(hours || 0, minutes || 0);
+      }
+      if (dateB && b.time) {
+        const [hours, minutes] = b.time.split(':').map(Number);
+        dateB.setHours(hours || 0, minutes || 0);
+      }
+      
+      return (dateA || 0) - (dateB || 0);
     });
     
     console.log(`=== Final event count: ${events.length} ===`);

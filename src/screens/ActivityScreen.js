@@ -13,6 +13,31 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getUserEvents, getSavedEvents } from '../services/eventService';
 
+// Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
+const parseEventDate = (dateString) => {
+  if (!dateString) return null;
+  
+  // Try YYYY-MM-DD format first (API events)
+  if (dateString.includes('-') && dateString.indexOf('-') === 4) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (year && month && day) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Try MM/DD/YYYY format (Firebase user-posted events)
+  if (dateString.includes('/')) {
+    const [month, day, year] = dateString.split('/').map(Number);
+    if (month && day && year) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  
+  // Fallback: let JS try to parse it
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 export default function ActivityScreen() {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -25,16 +50,27 @@ export default function ActivityScreen() {
 
     // Load saved events (for upcoming reminders)
     const saved = await getSavedEvents(user.uid);
+    console.log('Saved events from Firebase:', saved.length, saved);
     
     // Filter to only future events and sort by date
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of today
+    
     const upcoming = saved
       .filter(event => {
-        if (!event.date) return false;
-        const eventDate = new Date(event.date);
-        return eventDate >= now;
+        if (!event.date) {
+          console.log('Event has no date:', event.title);
+          return false;
+        }
+        const eventDate = parseEventDate(event.date);
+        console.log(`Event "${event.title}" date: ${event.date} -> parsed: ${eventDate}, now: ${now}, isFuture: ${eventDate && eventDate >= now}`);
+        return eventDate && eventDate >= now;
       })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort((a, b) => {
+        const dateA = parseEventDate(a.date);
+        const dateB = parseEventDate(b.date);
+        return (dateA || 0) - (dateB || 0);
+      });
     
     setUpcomingEvents(upcoming);
 
@@ -58,7 +94,9 @@ export default function ActivityScreen() {
   };
 
   const getDaysUntil = (dateString) => {
-    const eventDate = new Date(dateString);
+    const eventDate = parseEventDate(dateString);
+    if (!eventDate) return 'Date TBD';
+    
     const now = new Date();
     const diffTime = eventDate - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

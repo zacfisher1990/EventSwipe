@@ -43,7 +43,8 @@
         {
           "locationWhenInUsePermission": "EventSwipe uses your location to find events near you."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

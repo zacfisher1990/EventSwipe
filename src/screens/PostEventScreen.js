@@ -10,9 +10,11 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { createEvent } from '../services/eventService';
 
@@ -32,8 +34,12 @@ const CATEGORIES = [
 export default function PostEventScreen({ navigation }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [eventDate, setEventDate] = useState(new Date());
+  const [eventTime, setEventTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [dateSelected, setDateSelected] = useState(false);
+  const [timeSelected, setTimeSelected] = useState(false);
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
   const [category, setCategory] = useState('');
@@ -45,6 +51,59 @@ export default function PostEventScreen({ navigation }) {
   const [error, setError] = useState('');
 
   const { user } = useAuth();
+
+  // Format date for display (e.g., "Jan 15, 2025")
+  const formatDateDisplay = (date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Format time for display (e.g., "7:00 PM")
+  const formatTimeDisplay = (date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  // Format date for storage (YYYY-MM-DD) - compatible with filtering
+  const formatDateForStorage = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Format time for storage (HH:MM) - 24-hour format
+  const formatTimeForStorage = (date) => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setEventDate(selectedDate);
+      setDateSelected(true);
+    }
+  };
+
+  const onTimeChange = (event, selectedTime) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (selectedTime) {
+      setEventTime(selectedTime);
+      setTimeSelected(true);
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -69,8 +128,10 @@ export default function PostEventScreen({ navigation }) {
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setDate('');
-    setTime('');
+    setEventDate(new Date());
+    setEventTime(new Date());
+    setDateSelected(false);
+    setTimeSelected(false);
     setLocation('');
     setAddress('');
     setCategory('');
@@ -83,7 +144,7 @@ export default function PostEventScreen({ navigation }) {
   const handleSubmit = async () => {
   setError('');
   
-  if (!title || !date || !time || !location || !category) {
+  if (!title || !dateSelected || !timeSelected || !location || !category) {
     setError('Please fill in all required fields.');
     return;
   }
@@ -93,8 +154,8 @@ export default function PostEventScreen({ navigation }) {
   const eventData = {
     title,
     description,
-    date,
-    time,
+    date: formatDateForStorage(eventDate),  // YYYY-MM-DD format
+    time: formatTimeForStorage(eventTime),  // HH:MM format
     location,
     address,
     category,
@@ -218,25 +279,103 @@ export default function PostEventScreen({ navigation }) {
         <View style={styles.row}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Date *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="MM/DD/YYYY"
-              placeholderTextColor="#999"
-              value={date}
-              onChangeText={setDate}
-            />
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={20} color="#666" />
+              <Text style={[styles.pickerButtonText, !dateSelected && styles.placeholderText]}>
+                {dateSelected ? formatDateDisplay(eventDate) : 'Select date'}
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
             <Text style={styles.label}>Time *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="7:00 PM"
-              placeholderTextColor="#999"
-              value={time}
-              onChangeText={setTime}
-            />
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Ionicons name="time-outline" size={20} color="#666" />
+              <Text style={[styles.pickerButtonText, !timeSelected && styles.placeholderText]}>
+                {timeSelected ? formatTimeDisplay(eventTime) : 'Select time'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Date Picker Modal */}
+        {showDatePicker && (
+          Platform.OS === 'ios' ? (
+            <Modal transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      setDateSelected(true);
+                      setShowDatePicker(false);
+                    }}>
+                      <Text style={styles.pickerModalDone}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={eventDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={onDateChange}
+                    minimumDate={new Date()}
+                  />
+                </View>
+              </View>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={eventDate}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              minimumDate={new Date()}
+            />
+          )
+        )}
+
+        {/* Time Picker Modal */}
+        {showTimePicker && (
+          Platform.OS === 'ios' ? (
+            <Modal transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      setTimeSelected(true);
+                      setShowTimePicker(false);
+                    }}>
+                      <Text style={styles.pickerModalDone}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={eventTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={onTimeChange}
+                  />
+                </View>
+              </View>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={eventTime}
+              mode="time"
+              display="default"
+              onChange={onTimeChange}
+            />
+          )
+        )}
 
         {/* Location */}
         <View style={styles.inputGroup}>
@@ -511,6 +650,48 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#4ECDC4',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  pickerButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 10,
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  pickerModalCancel: {
+    fontSize: 16,
+    color: '#999',
+  },
+  pickerModalDone: {
+    fontSize: 16,
+    color: '#4ECDC4',
     fontWeight: '600',
   },
 });
