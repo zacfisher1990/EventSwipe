@@ -200,8 +200,22 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
     if (event.ticketUrl) {
       Linking.openURL(event.ticketUrl);
     } else if (event.source === 'ticketmaster') {
-      const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''}`);
+      // Clean up the title for better search results
+      let searchTitle = event.title
+        .split(' - ')[0]
+        .split(' at ')[0]
+        .split(' @ ')[0]
+        .trim();
+      const searchQuery = encodeURIComponent(searchTitle);
       Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
+    } else if (event.source === 'seatgeek') {
+      let searchTitle = event.title
+        .split(' - ')[0]
+        .split(' at ')[0]
+        .split(' @ ')[0]
+        .trim();
+      const searchQuery = encodeURIComponent(searchTitle);
+      Linking.openURL(`https://seatgeek.com/search?search=${searchQuery}`);
     } else {
       const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
       Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
@@ -251,7 +265,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               <View style={styles.categoryTag}>
                 <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
               </View>
-              {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
+              {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
                 <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
                   <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
                 </TouchableOpacity>

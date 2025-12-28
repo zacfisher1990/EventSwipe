@@ -101,15 +101,84 @@ const normalizeCategory = (category) => {
   return CATEGORY_MAP[lower] || 'other';
 };
 
+// Category-specific placeholder images (high quality, royalty-free)
+const CATEGORY_PLACEHOLDERS = {
+  'music': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80', // Concert crowd
+  'comedy': 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&q=80', // Microphone stage
+  'sports': 'https://images.unsplash.com/photo-1461896836934- voices-in-the-crowd?w=800&q=80', // Stadium
+  'arts': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&q=80', // Theater stage
+  'nightlife': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800&q=80', // Club lights
+  'family': 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=800&q=80', // Carnival
+  'food': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80', // Food spread
+  'fitness': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80', // Gym
+  'networking': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80', // Conference
+  'outdoor': 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&q=80', // Festival crowd
+  'other': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80', // Event lights
+};
+
+// Known bad/placeholder image patterns from Ticketmaster
+const isBadImage = (url) => {
+  if (!url) return true;
+  const lowerUrl = url.toLowerCase();
+  
+  // Block specific known bad patterns
+  const badPatterns = [
+    'recomendation',
+    'recommendation', 
+    'default_event',
+    'no_image',
+    'placeholder',
+    'generic',
+    'ic_default',
+    'artist_default',
+    'event_default',
+    // Ticketmaster generic category images (UUIDs in /dam/c/ folder)
+    '/dam/c/',
+    // Other known placeholder IDs
+    '106201', // Generic event placeholder
+    '105351', // Another generic placeholder
+  ];
+  
+  return badPatterns.some(pattern => lowerUrl.includes(pattern));
+};
+
 // Transform Ticketmaster event to your app's format
 const transformEvent = (tmEvent) => {
   const venue = tmEvent._embedded?.venues?.[0];
+  const attractions = tmEvent._embedded?.attractions || [];
   const priceRange = tmEvent.priceRanges?.[0];
   const classification = tmEvent.classifications?.[0];
   
-  // Get the best image (prefer 16:9 ratio, larger size)
-  const image = tmEvent.images?.find(img => img.ratio === '16_9' && img.width > 500)
-    || tmEvent.images?.[0];
+  // Get the best image - try multiple sources
+  const getBestImage = (category) => {
+    // 1. First try event images (prefer 16:9 ratio, larger size)
+    if (tmEvent.images && tmEvent.images.length > 0) {
+      const bestEventImage = tmEvent.images.find(img => img.ratio === '16_9' && img.width > 500 && !isBadImage(img.url))
+        || tmEvent.images.find(img => img.ratio === '16_9' && !isBadImage(img.url))
+        || tmEvent.images.find(img => img.width > 500 && !isBadImage(img.url))
+        || tmEvent.images.find(img => !isBadImage(img.url));
+      if (bestEventImage?.url) return bestEventImage.url;
+    }
+    
+    // 2. Try attraction/performer images
+    for (const attraction of attractions) {
+      if (attraction.images && attraction.images.length > 0) {
+        const bestAttractionImage = attraction.images.find(img => img.ratio === '16_9' && img.width > 500 && !isBadImage(img.url))
+          || attraction.images.find(img => img.ratio === '16_9' && !isBadImage(img.url))
+          || attraction.images.find(img => !isBadImage(img.url));
+        if (bestAttractionImage?.url) return bestAttractionImage.url;
+      }
+    }
+    
+    // 3. Try venue images
+    if (venue?.images && venue.images.length > 0) {
+      const bestVenueImage = venue.images.find(img => !isBadImage(img.url));
+      if (bestVenueImage?.url) return bestVenueImage.url;
+    }
+    
+    // 4. Use category-specific placeholder
+    return CATEGORY_PLACEHOLDERS[category] || CATEGORY_PLACEHOLDERS['other'];
+  };
 
   // Smart category extraction - Ticketmaster sometimes has "Undefined" as actual value
   const getCategory = () => {
@@ -184,9 +253,8 @@ const transformEvent = (tmEvent) => {
   };
 
   const rawCategory = getCategory();
-  
-  // DEBUG - check if URL exists
-  console.log('Event:', tmEvent.name, 'URL:', tmEvent.url);
+  const normalizedCategory = normalizeCategory(rawCategory);
+  const image = getBestImage(normalizedCategory);
   
   return {
     id: tmEvent.id,
@@ -199,7 +267,7 @@ const transformEvent = (tmEvent) => {
     address: venue?.address?.line1 || '',
     latitude: parseFloat(venue?.location?.latitude) || null,
     longitude: parseFloat(venue?.location?.longitude) || null,
-    category: normalizeCategory(rawCategory),  // For filtering (matches filter IDs)
+    category: normalizedCategory,  // For filtering (matches filter IDs)
     categoryDisplay: rawCategory,               // For display (human-readable)
     genre: classification?.genre?.name || '',
     price: priceRange 
@@ -207,7 +275,7 @@ const transformEvent = (tmEvent) => {
           ? `$${priceRange.min}` 
           : `$${priceRange.min} - $${priceRange.max}`)
       : 'See tickets',
-    image: image?.url || 'https://picsum.photos/400/300',
+    image: image,
     ticketUrl: tmEvent.url || '',
     source: 'ticketmaster',
     active: true,

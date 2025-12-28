@@ -147,10 +147,25 @@ export default function HomeScreen() {
         Linking.openURL(event.ticketUrl);
       } else if (event.source === 'ticketmaster') {
         // Ticketmaster event without URL - search Ticketmaster
-        const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''}`);
+        // Clean up the title for better search results (remove venue, date info, etc.)
+        let searchTitle = event.title
+          .split(' - ')[0]  // Remove everything after " - "
+          .split(' at ')[0] // Remove "at Venue"
+          .split(' @ ')[0]  // Remove "@ Venue"
+          .trim();
+        const searchQuery = encodeURIComponent(searchTitle);
         Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
+      } else if (event.source === 'seatgeek') {
+        // SeatGeek event without URL - search SeatGeek
+        let searchTitle = event.title
+          .split(' - ')[0]
+          .split(' at ')[0]
+          .split(' @ ')[0]
+          .trim();
+        const searchQuery = encodeURIComponent(searchTitle);
+        Linking.openURL(`https://seatgeek.com/search?search=${searchQuery}`);
       } else {
-        // PredictHQ or other - search Google for the event
+        // Other - search Google for the event
         const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
         Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
       }
@@ -166,7 +181,7 @@ export default function HomeScreen() {
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
-            {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
+            {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
               <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
                 <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
               </TouchableOpacity>
