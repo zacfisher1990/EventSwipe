@@ -353,9 +353,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 26,
+    fontFamily: 'Shrikhand_400Regular',
+    color: '#4ECDC4',
   },
   headerButton: {
     padding: 8,
