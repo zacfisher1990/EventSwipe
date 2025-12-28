@@ -319,10 +319,10 @@ export default function AuthModal() {
   return (
     <View style={styles.container}>
       {/* Animated background orbs */}
-      <GradientOrb color="#FF6B6B" size={200} x={-50} y={-50} delay={0} />
-      <GradientOrb color="#4ECDC4" size={250} x={width - 100} y={height * 0.3} delay={500} />
-      <GradientOrb color="#FFE66D" size={180} x={width * 0.3} y={height * 0.15} delay={1000} />
-      <GradientOrb color="#95E1D3" size={220} x={-80} y={height * 0.4} delay={750} />
+      <GradientOrb color="#7EDDD6" size={200} x={-50} y={-50} delay={0} />
+      <GradientOrb color="#3BA99F" size={250} x={width - 100} y={height * 0.3} delay={500} />
+      <GradientOrb color="#A8E6CF" size={180} x={width * 0.3} y={height * 0.15} delay={1000} />
+      <GradientOrb color="#5DBDAD" size={220} x={-80} y={height * 0.4} delay={750} />
 
       {/* Floating event icons */}
       {floatingIcons.map((props, index) => (
@@ -509,14 +509,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logo: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
+  fontSize: 42,
+  fontFamily: 'Shrikhand_400Regular',
+  color: '#fff',
+  textAlign: 'center',
+  textShadowColor: 'rgba(0, 0, 0, 0.15)',
+  textShadowOffset: { width: 0, height: 2 },
+  textShadowRadius: 4,
+},
   tagline: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',

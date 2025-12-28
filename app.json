@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.eventswipeapp.eventswipe",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "EventSwipe uses your location to find events near you."
+        "NSLocationWhenInUseUsageDescription": "EventSwipe uses your location to find events near you.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +27,11 @@
         "backgroundColor": "#4ECDC4"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.eventswipeapp.eventswipe"
+      "package": "com.eventswipeapp.eventswipe",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,8 +47,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "cf67b665-3e15-4bd7-a8b9-a477c2f5711e"
       }
-    }
+    },
+    "owner": "zcfshr1990"
   }
 }

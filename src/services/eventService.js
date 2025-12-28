@@ -75,7 +75,6 @@ const isDuplicate = (event1, event2) => {
 // Remove duplicates, preferring Ticketmaster events
 const deduplicateEvents = (events) => {
   const result = [];
-  const seen = new Set();
   
   // Sort so Ticketmaster comes first (we prefer TM data quality)
   const sorted = [...events].sort((a, b) => {
@@ -102,6 +101,98 @@ const deduplicateEvents = (events) => {
   
   return result;
 };
+
+// ============================================================
+// ALL VALID FILTER CATEGORY IDs
+// ============================================================
+const VALID_FILTER_CATEGORIES = [
+  'music', 'food', 'sports', 'arts', 'nightlife', 
+  'fitness', 'comedy', 'networking', 'family', 'outdoor'
+];
+
+// ============================================================
+// TIME RANGE HELPERS
+// ============================================================
+const getTimeRangeDates = (timeRange) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let startDate = startOfToday;
+  let endDate = new Date();
+  
+  switch (timeRange) {
+    case 'today':
+      // All of today (from midnight to 11:59pm)
+      endDate = new Date(startOfToday);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case 'tomorrow':
+      // Tomorrow only
+      startDate = new Date(startOfToday);
+      startDate.setDate(startDate.getDate() + 1);
+      endDate = new Date(startDate);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case 'week':
+      // Next 7 days from today
+      endDate = new Date(startOfToday);
+      endDate.setDate(endDate.getDate() + 7);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case 'weekend':
+      // This upcoming weekend (or current weekend if today is Sat/Sun)
+      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      
+      if (dayOfWeek === 0) {
+        // It's Sunday - show today only
+        startDate = startOfToday;
+        endDate = new Date(startOfToday);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (dayOfWeek === 6) {
+        // It's Saturday - show Sat & Sun
+        startDate = startOfToday;
+        endDate = new Date(startOfToday);
+        endDate.setDate(endDate.getDate() + 1); // Sunday
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        // Weekday - show upcoming Saturday & Sunday
+        const daysUntilSaturday = 6 - dayOfWeek;
+        startDate = new Date(startOfToday);
+        startDate.setDate(startDate.getDate() + daysUntilSaturday);
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1); // Sunday
+        endDate.setHours(23, 59, 59, 999);
+      }
+      break;
+      
+    case 'month':
+      endDate = new Date(startOfToday);
+      endDate.setMonth(endDate.getMonth() + 1);
+      break;
+      
+    case '3months':
+      endDate = new Date(startOfToday);
+      endDate.setMonth(endDate.getMonth() + 3);
+      break;
+      
+    case 'year':
+      endDate = new Date(startOfToday);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      break;
+      
+    default:
+      endDate = new Date(startOfToday);
+      endDate.setMonth(endDate.getMonth() + 1);
+  }
+  
+  return { startDate, endDate };
+};
+
+// ============================================================
+// MAIN FUNCTIONS
+// ============================================================
 
 // Save event to user's saved list
 export const saveEvent = async (userId, event) => {
@@ -212,6 +303,9 @@ export const createEvent = async (eventData, userId, imageUri = null) => {
 // Get all active events (excluding ones user has swiped)
 export const getEvents = async (userId = null, location = null, filters = null) => {
   try {
+    console.log('=== getEvents called ===');
+    console.log('Filters:', JSON.stringify(filters, null, 2));
+    
     // Get Firebase events (user-posted)
     const eventsRef = collection(db, 'events');
     const q = query(
@@ -226,6 +320,7 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       ...doc.data(),
       source: 'firebase',
     }));
+    console.log(`Firebase events: ${events.length}`);
     
     // Fetch from both Ticketmaster and SeatGeek in parallel
     const radius = filters?.distance || 50;
@@ -243,7 +338,7 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     
     // Add Ticketmaster events
     if (tmResult.success && tmResult.events.length > 0) {
-      console.log(`Found ${tmResult.events.length} events from Ticketmaster`);
+      console.log(`Ticketmaster events: ${tmResult.events.length}`);
       apiEvents = [...apiEvents, ...tmResult.events];
     } else if (tmResult.error) {
       console.error('Ticketmaster error:', tmResult.error);
@@ -251,7 +346,7 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     
     // Add SeatGeek events
     if (sgResult.success && sgResult.events.length > 0) {
-      console.log(`Found ${sgResult.events.length} events from SeatGeek`);
+      console.log(`SeatGeek events: ${sgResult.events.length}`);
       apiEvents = [...apiEvents, ...sgResult.events];
     } else if (sgResult.error) {
       console.error('SeatGeek error:', sgResult.error);
@@ -265,14 +360,21 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     const existingIds = new Set(events.map(e => e.id));
     const newEvents = deduplicatedApiEvents.filter(e => !existingIds.has(e.id));
     events = [...events, ...newEvents];
+    console.log(`Total after merge: ${events.length}`);
     
-    // Filter by distance if we have user location
+    // ========================================
+    // FILTER 1: Distance
+    // ========================================
     if (location && filters?.distance) {
+      const beforeCount = events.length;
       events = events.filter(event => {
         if (!event.latitude || !event.longitude) {
-          // Firebase events without coords - exclude since we can't verify distance
-          if (event.source === 'firebase') return false;
-          // API events were already filtered by the API
+          // Firebase events without coords - keep them for now
+          if (event.source === 'firebase') {
+            event.distance = 'Unknown';
+            return true;
+          }
+          // API events should have been filtered by the API itself
           return true;
         }
         
@@ -286,73 +388,104 @@ export const getEvents = async (userId = null, location = null, filters = null) 
         event.distance = `${Math.round(distance)} mi`;
         return distance <= filters.distance;
       });
+      console.log(`After distance filter: ${events.length} (removed ${beforeCount - events.length})`);
     }
     
-    // Filter out events the user has already swiped on
+    // ========================================
+    // FILTER 2: Already swiped
+    // ========================================
     if (userId) {
+      const beforeCount = events.length;
       const swipedIds = await getSwipedEventIds(userId);
       events = events.filter(event => !swipedIds.includes(event.id));
+      console.log(`After swiped filter: ${events.length} (removed ${beforeCount - events.length})`);
     }
     
-    // Apply category filters
+    // ========================================
+    // FILTER 3: Categories
+    // ========================================
     if (filters?.categories && filters.categories.length > 0) {
-      events = events.filter(event => {
-        const eventCategory = (event.category || '').toLowerCase();
-        return filters.categories.includes(eventCategory);
-      });
-    }
-    
-    // Apply time range filter
-    if (filters?.timeRange) {
-      const now = new Date();
-      let endDate = new Date();
+      // Only filter if NOT all categories selected
+      const allSelected = filters.categories.length >= VALID_FILTER_CATEGORIES.length;
       
-      switch (filters.timeRange) {
-        case 'today':
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case 'tomorrow':
-          endDate.setDate(endDate.getDate() + 1);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case 'week':
-          endDate.setDate(endDate.getDate() + 7);
-          break;
-        case 'weekend':
-          const daysUntilSunday = 7 - now.getDay();
-          endDate.setDate(endDate.getDate() + daysUntilSunday);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case 'month':
-          endDate.setMonth(endDate.getMonth() + 1);
-          break;
-        case '3months':
-          endDate.setMonth(endDate.getMonth() + 3);
-          break;
-        case 'year':
-          endDate.setFullYear(endDate.getFullYear() + 1);
-          break;
-        default:
-          endDate.setMonth(endDate.getMonth() + 1);
+      if (!allSelected) {
+        const beforeCount = events.length;
+        
+        events = events.filter(event => {
+          const eventCategory = (event.category || '').toLowerCase();
+          
+          // If event has no category or 'other', include it to avoid hiding events
+          if (!eventCategory || eventCategory === 'other') {
+            return true;
+          }
+          
+          // Check if event's category is in selected filters
+          return filters.categories.includes(eventCategory);
+        });
+        
+        console.log(`After category filter: ${events.length} (removed ${beforeCount - events.length})`);
       }
-      
-      events = events.filter(event => {
-        if (!event.date) return true;
-        const eventDate = new Date(event.date);
-        return eventDate >= now && eventDate <= endDate;
-      });
     }
     
-    // Sort events by date (soonest first)
+    // ========================================
+    // FILTER 4: Time range
+    // ========================================
+    if (filters?.timeRange) {
+      const beforeCount = events.length;
+      const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
+      
+      console.log(`Time range "${filters.timeRange}": ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      events = events.filter(event => {
+        if (!event.date) {
+          // Events without dates - exclude them as we can't determine if they fit
+          return false;
+        }
+        
+        // Parse the date (handle both "2024-01-15" and full ISO strings)
+        let eventDate;
+        if (event.date.includes('T')) {
+          eventDate = new Date(event.date);
+        } else {
+          // Date only string - parse as local date
+          const [year, month, day] = event.date.split('-').map(Number);
+          eventDate = new Date(year, month - 1, day);
+        }
+        
+        // Check if date is valid
+        if (isNaN(eventDate.getTime())) {
+          console.log(`Invalid date for event: "${event.title}" - date: "${event.date}"`);
+          return false;
+        }
+        
+        return eventDate >= startDate && eventDate <= endDate;
+      });
+      
+      console.log(`After time filter: ${events.length} (removed ${beforeCount - events.length})`);
+    }
+    
+    // ========================================
+    // SORT: By date (soonest first)
+    // ========================================
     events.sort((a, b) => {
       if (!a.date) return 1;
       if (!b.date) return -1;
-      const dateA = new Date(a.date + (a.time ? `T${a.time}` : ''));
-      const dateB = new Date(b.date + (b.time ? `T${b.time}` : ''));
-      return dateA - dateB;
+      
+      // Create comparable dates
+      const parseDate = (event) => {
+        if (event.date.includes('T')) {
+          return new Date(event.date);
+        }
+        const dateStr = event.time 
+          ? `${event.date}T${event.time}` 
+          : event.date;
+        return new Date(dateStr);
+      };
+      
+      return parseDate(a) - parseDate(b);
     });
     
-    console.log(`Total events to show: ${events.length}`);
+    console.log(`=== Final event count: ${events.length} ===`);
     
     return { success: true, events };
   } catch (error) {

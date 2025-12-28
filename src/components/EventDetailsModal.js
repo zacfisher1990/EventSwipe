@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,8 +12,13 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Report reasons
 const REPORT_REASONS = [
@@ -193,6 +198,47 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
 // Main EventDetailsModal Component
 export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const scrollOffset = useRef(0);
+  const scrollViewRef = useRef(null);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only activate if swiping down and scroll is at top
+        return gestureState.dy > 10 && scrollOffset.current <= 0;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          // Close the modal
+          Animated.timing(translateY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            translateY.setValue(0);
+            onClose();
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const handleScroll = (event) => {
+    scrollOffset.current = event.nativeEvent.contentOffset.y;
+  };
 
   if (!event) return null;
 
@@ -247,7 +293,18 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <Animated.View 
+          style={[
+            styles.container,
+            { transform: [{ translateY }] }
+          ]}
+          {...panResponder.panHandlers}
+        >
+          {/* Swipe indicator */}
+          <View style={styles.swipeIndicator}>
+            <View style={styles.swipeBar} />
+          </View>
+
           {/* Report button in top right */}
           <TouchableOpacity 
             style={styles.reportButton}
@@ -256,7 +313,14 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             <Ionicons name="flag-outline" size={20} color="#666" />
           </TouchableOpacity>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            bounces={false}
+          >
             {/* Image */}
             <Image source={{ uri: event.image }} style={styles.image} />
 
@@ -289,17 +353,9 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
                 {event.address && (
                   <Text style={styles.addressText}>{event.address}</Text>
                 )}
-                <Text style={styles.directionsLink}>Get Directions →</Text>
+                <Text style={styles.directionsLink}>Get directions →</Text>
               </View>
             </TouchableOpacity>
-
-            {/* Distance */}
-            {event.distance && (
-              <View style={styles.infoRow}>
-                <Ionicons name="navigate-outline" size={20} color="#4ECDC4" />
-                <Text style={styles.infoText}>{event.distance} away</Text>
-              </View>
-            )}
 
             {/* Description */}
             {event.description && (
@@ -309,41 +365,34 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               </View>
             )}
 
-            {/* Ticket Button */}
-            {(event.source === 'ticketmaster' || event.source === 'predicthq') && (
+            {/* Get Tickets Button */}
+            {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
               <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
-                <Ionicons name="ticket-outline" size={20} color="#fff" />
-                <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}</Text>
+                <Ionicons name="ticket-outline" size={24} color="#fff" />
+                <Text style={styles.ticketButtonText}>
+                  {event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}
+                </Text>
               </TouchableOpacity>
             )}
 
             <View style={styles.bottomPadding} />
           </ScrollView>
 
-          {/* Action Buttons */}
+          {/* Action Bar */}
           <View style={styles.actionBar}>
             {isSavedView ? (
-              <>
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.passButton]} 
-                  onPress={() => {
-                    onPass();
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={28} color="#FF6B6B" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.closeButtonStyle]} 
-                  onPress={onClose}
-                >
-                  <Ionicons name="close" size={28} color="#666" />
-                </TouchableOpacity>
-              </>
+              // Just close button for saved view
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.closeButtonStyle]}
+                onPress={onClose}
+              >
+                <Ionicons name="close" size={32} color="#666" />
+              </TouchableOpacity>
             ) : (
+              // Pass and Save buttons for discover view
               <>
                 <TouchableOpacity 
-                  style={[styles.actionButton, styles.passButton]} 
+                  style={[styles.actionButton, styles.passButton]}
                   onPress={() => {
                     onPass();
                     onClose();
@@ -353,7 +402,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  style={[styles.actionButton, styles.saveButton]} 
+                  style={[styles.actionButton, styles.saveButton]}
                   onPress={() => {
                     onSave();
                     onClose();
@@ -364,7 +413,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               </>
             )}
           </View>
-        </View>
+        </Animated.View>
       </View>
 
       {/* Report Modal */}
@@ -372,52 +421,60 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
         onSubmit={handleReportSubmit}
-        eventTitle={event?.title}
+        eventTitle={event.title}
       />
     </Modal>
   );
 }
 
-// Main modal styles
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   container: {
-    flex: 1,
     backgroundColor: '#fff',
-    marginTop: Platform.OS === 'web' ? 20 : 50,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    overflow: 'hidden',
+    height: '90%',
+  },
+  swipeIndicator: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  swipeBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#ddd',
+    borderRadius: 2,
   },
   reportButton: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     right: 16,
     zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 20,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
   },
   image: {
     width: '100%',
-    height: 280,
+    height: 250,
   },
   tagRow: {
     flexDirection: 'row',
-    padding: 20,
-    paddingBottom: 0,
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   categoryTag: {
     backgroundColor: '#E8FAF8',
@@ -432,17 +489,17 @@ const styles = StyleSheet.create({
   },
   priceTag: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 16,
   },
   priceText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 14,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     padding: 20,

@@ -269,7 +269,10 @@ export default function HomeScreen() {
             cardIndex={cardIndex}
             backgroundColor={'#f5f5f5'}
             stackSize={3}
-            stackSeparation={15}
+            stackSeparation={10}
+            stackScale={5}
+            infinite={false}
+            showSecondCard={true}
             useViewOverflow={false}
             containerStyle={styles.swiperContent}
             overlayLabels={{
