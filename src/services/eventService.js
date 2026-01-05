@@ -29,7 +29,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// Normalize string for comparison (remove special chars, lowercase, trim)
+// Normalize string for comparison
 const normalizeString = (str) => {
   if (!str) return '';
   return str
@@ -41,25 +41,19 @@ const normalizeString = (str) => {
 
 // Check if two events are likely duplicates
 const isDuplicate = (event1, event2) => {
-  // Must be on the same date
   if (event1.date !== event2.date) return false;
   
-  // Compare venue names (normalized)
   const venue1 = normalizeString(event1.location || event1.venueName);
   const venue2 = normalizeString(event2.location || event2.venueName);
   
-  // If venues match and same date, likely duplicate
   if (venue1 && venue2 && venue1 === venue2) {
-    // Also check if titles are similar
     const title1 = normalizeString(event1.title);
     const title2 = normalizeString(event2.title);
     
-    // Check if one title contains the other (handles "Artist" vs "Artist at Venue")
     if (title1.includes(title2) || title2.includes(title1)) {
       return true;
     }
     
-    // Check for significant word overlap
     const words1 = title1.split(' ').filter(w => w.length > 3);
     const words2 = title2.split(' ').filter(w => w.length > 3);
     const commonWords = words1.filter(w => words2.includes(w));
@@ -76,7 +70,6 @@ const isDuplicate = (event1, event2) => {
 const deduplicateEvents = (events) => {
   const result = [];
   
-  // Sort so Ticketmaster comes first (we prefer TM data quality)
   const sorted = [...events].sort((a, b) => {
     if (a.source === 'ticketmaster' && b.source !== 'ticketmaster') return -1;
     if (a.source !== 'ticketmaster' && b.source === 'ticketmaster') return 1;
@@ -84,7 +77,6 @@ const deduplicateEvents = (events) => {
   });
   
   for (const event of sorted) {
-    // Check if this event is a duplicate of any we've already added
     let isDupe = false;
     for (const existing of result) {
       if (isDuplicate(event, existing)) {
@@ -102,22 +94,19 @@ const deduplicateEvents = (events) => {
   return result;
 };
 
-// ============================================================
-// ALL VALID FILTER CATEGORY IDs
-// ============================================================
+// All valid filter category IDs
 const VALID_FILTER_CATEGORIES = [
   'music', 'food', 'sports', 'arts', 'nightlife', 
   'fitness', 'comedy', 'networking', 'family', 'outdoor'
 ];
 
-// ============================================================
-// DATE PARSING HELPER
-// ============================================================
-// Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
+// Categories that the APIs can filter server-side
+const API_FILTERABLE_CATEGORIES = ['music', 'sports', 'comedy', 'arts', 'family'];
+
+// Parse date string in multiple formats
 const parseEventDate = (dateString) => {
   if (!dateString) return null;
   
-  // Try YYYY-MM-DD format first (API events)
   if (dateString.includes('-') && dateString.indexOf('-') === 4) {
     const [year, month, day] = dateString.split('-').map(Number);
     if (year && month && day) {
@@ -125,7 +114,6 @@ const parseEventDate = (dateString) => {
     }
   }
   
-  // Try MM/DD/YYYY format (Firebase user-posted events)
   if (dateString.includes('/')) {
     const [month, day, year] = dateString.split('/').map(Number);
     if (month && day && year) {
@@ -133,14 +121,11 @@ const parseEventDate = (dateString) => {
     }
   }
   
-  // Fallback: let JS try to parse it
   const date = new Date(dateString);
   return isNaN(date.getTime()) ? null : date;
 };
 
-// ============================================================
-// TIME RANGE HELPERS
-// ============================================================
+// Get time range dates
 const getTimeRangeDates = (timeRange) => {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -149,13 +134,11 @@ const getTimeRangeDates = (timeRange) => {
   
   switch (timeRange) {
     case 'today':
-      // All of today (from midnight to 11:59pm)
       endDate = new Date(startOfToday);
       endDate.setHours(23, 59, 59, 999);
       break;
       
     case 'tomorrow':
-      // Tomorrow only
       startDate = new Date(startOfToday);
       startDate.setDate(startDate.getDate() + 1);
       endDate = new Date(startDate);
@@ -163,34 +146,29 @@ const getTimeRangeDates = (timeRange) => {
       break;
       
     case 'week':
-      // Next 7 days from today
       endDate = new Date(startOfToday);
       endDate.setDate(endDate.getDate() + 7);
       endDate.setHours(23, 59, 59, 999);
       break;
       
     case 'weekend':
-      // This upcoming weekend (or current weekend if today is Sat/Sun)
-      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const dayOfWeek = now.getDay();
       
       if (dayOfWeek === 0) {
-        // It's Sunday - show today only
         startDate = startOfToday;
         endDate = new Date(startOfToday);
         endDate.setHours(23, 59, 59, 999);
       } else if (dayOfWeek === 6) {
-        // It's Saturday - show Sat & Sun
         startDate = startOfToday;
         endDate = new Date(startOfToday);
-        endDate.setDate(endDate.getDate() + 1); // Sunday
+        endDate.setDate(endDate.getDate() + 1);
         endDate.setHours(23, 59, 59, 999);
       } else {
-        // Weekday - show upcoming Saturday & Sunday
         const daysUntilSaturday = 6 - dayOfWeek;
         startDate = new Date(startOfToday);
         startDate.setDate(startDate.getDate() + daysUntilSaturday);
         endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1); // Sunday
+        endDate.setDate(endDate.getDate() + 1);
         endDate.setHours(23, 59, 59, 999);
       }
       break;
@@ -350,12 +328,32 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     }));
     console.log(`Firebase events: ${events.length}`);
     
-    // Fetch from both Ticketmaster and SeatGeek in parallel
-    const radius = filters?.distance || 50;
-    const apiOptions = location 
-      ? { latitude: location.latitude, longitude: location.longitude, radius }
-      : {};
+    // Determine which categories to request from APIs
+    const selectedCategories = filters?.categories || [];
+    const allCategoriesSelected = selectedCategories.length === 0 || 
+                                   selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
     
+    // Only pass categories to APIs if user selected specific ones (not all)
+    // and at least one is API-filterable
+    let apiCategories = [];
+    if (!allCategoriesSelected) {
+      apiCategories = selectedCategories.filter(cat => API_FILTERABLE_CATEGORIES.includes(cat));
+      console.log('API-filterable categories requested:', apiCategories);
+    }
+    
+    // Build API options
+    const radius = filters?.distance || 50;
+    const apiOptions = {
+      radius,
+      categories: apiCategories,  // Pass categories to APIs
+    };
+    
+    if (location) {
+      apiOptions.latitude = location.latitude;
+      apiOptions.longitude = location.longitude;
+    }
+    
+    // Fetch from both APIs in parallel
     const [tmResult, sgResult] = await Promise.all([
       searchTicketmaster(apiOptions),
       searchSeatGeek(apiOptions),
@@ -364,7 +362,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     // Collect API events for deduplication
     let apiEvents = [];
     
-    // Add Ticketmaster events
     if (tmResult.success && tmResult.events.length > 0) {
       console.log(`Ticketmaster events: ${tmResult.events.length}`);
       apiEvents = [...apiEvents, ...tmResult.events];
@@ -372,7 +369,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       console.error('Ticketmaster error:', tmResult.error);
     }
     
-    // Add SeatGeek events
     if (sgResult.success && sgResult.events.length > 0) {
       console.log(`SeatGeek events: ${sgResult.events.length}`);
       apiEvents = [...apiEvents, ...sgResult.events];
@@ -380,7 +376,7 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       console.error('SeatGeek error:', sgResult.error);
     }
     
-    // Deduplicate API events (Ticketmaster preferred)
+    // Deduplicate API events
     const deduplicatedApiEvents = deduplicateEvents(apiEvents);
     console.log(`After deduplication: ${deduplicatedApiEvents.length} API events (removed ${apiEvents.length - deduplicatedApiEvents.length} duplicates)`);
     
@@ -397,12 +393,10 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       const beforeCount = events.length;
       events = events.filter(event => {
         if (!event.latitude || !event.longitude) {
-          // Firebase events without coords - keep them for now
           if (event.source === 'firebase') {
             event.distance = 'Unknown';
             return true;
           }
-          // API events should have been filtered by the API itself
           return true;
         }
         
@@ -430,29 +424,26 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     }
     
     // ========================================
-    // FILTER 3: Categories
+    // FILTER 3: Categories (client-side backup)
     // ========================================
-    if (filters?.categories && filters.categories.length > 0) {
-      // Only filter if NOT all categories selected
-      const allSelected = filters.categories.length >= VALID_FILTER_CATEGORIES.length;
+    // Even though we filter at API level, also filter here for:
+    // - Firebase events
+    // - Categories not supported by APIs (nightlife, food, fitness, etc.)
+    if (selectedCategories.length > 0 && !allCategoriesSelected) {
+      const beforeCount = events.length;
       
-      if (!allSelected) {
-        const beforeCount = events.length;
+      events = events.filter(event => {
+        const eventCategory = (event.category || '').toLowerCase();
         
-        events = events.filter(event => {
-          const eventCategory = (event.category || '').toLowerCase();
-          
-          // If event has no category or 'other', include it to avoid hiding events
-          if (!eventCategory || eventCategory === 'other') {
-            return true;
-          }
-          
-          // Check if event's category is in selected filters
-          return filters.categories.includes(eventCategory);
-        });
+        // If event has no category or 'other', include it
+        if (!eventCategory || eventCategory === 'other') {
+          return true;
+        }
         
-        console.log(`After category filter: ${events.length} (removed ${beforeCount - events.length})`);
-      }
+        return selectedCategories.includes(eventCategory);
+      });
+      
+      console.log(`After category filter: ${events.length} (removed ${beforeCount - events.length})`);
     }
     
     // ========================================
@@ -465,15 +456,9 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       console.log(`Time range "${filters.timeRange}": ${startDate.toISOString()} to ${endDate.toISOString()}`);
       
       events = events.filter(event => {
-        if (!event.date) {
-          // Events without dates - exclude them as we can't determine if they fit
-          return false;
-        }
+        if (!event.date) return false;
         
-        // Parse the date using our flexible parser
         const eventDate = parseEventDate(event.date);
-        
-        // Check if date is valid
         if (!eventDate) {
           console.log(`Invalid date for event: "${event.title}" - date: "${event.date}"`);
           return false;
@@ -492,11 +477,9 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       if (!a.date) return 1;
       if (!b.date) return -1;
       
-      // Parse dates and add time if available
       let dateA = parseEventDate(a.date);
       let dateB = parseEventDate(b.date);
       
-      // Add time component if available
       if (dateA && a.time) {
         const [hours, minutes] = a.time.split(':').map(Number);
         dateA.setHours(hours || 0, minutes || 0);

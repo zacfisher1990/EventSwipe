@@ -3,6 +3,15 @@ import { Platform } from 'react-native';
 const SEATGEEK_CLIENT_ID = process.env.EXPO_PUBLIC_SEATGEEK_CLIENT_ID;
 const BASE_URL = 'https://api.seatgeek.com/2';
 
+// SeatGeek taxonomy IDs for filtering at API level
+const TAXONOMY_IDS = {
+  'music': 'concert',
+  'sports': 'sports',
+  'comedy': 'comedy',
+  'arts': 'theater',
+  'family': 'family',
+};
+
 // Map SeatGeek taxonomies to your app's filter IDs
 const CATEGORY_MAP = {
   'concert': 'music',
@@ -40,9 +49,8 @@ const CATEGORY_MAP = {
   'circus': 'family',
 };
 
-// Get display category name (matches your filter labels)
+// Get display category name
 const getCategoryDisplay = (taxonomies, category) => {
-  // Map internal category to display name
   const DISPLAY_MAP = {
     'music': 'Music',
     'sports': 'Sports',
@@ -72,13 +80,11 @@ const transformEvent = (sgEvent) => {
   
   // Get the best image from performers
   const getImage = () => {
-    // Try to get performer image first (usually better quality)
     for (const performer of performers) {
       if (performer.image) return performer.image;
       if (performer.images?.huge) return performer.images.huge;
       if (performer.images?.large) return performer.images.large;
     }
-    // Fallback to placeholder
     return `https://picsum.photos/400/300?random=${sgEvent.id}`;
   };
   
@@ -101,7 +107,7 @@ const transformEvent = (sgEvent) => {
   };
 
   return {
-    id: `sg_${sgEvent.id}`, // Prefix to avoid ID collisions
+    id: `sg_${sgEvent.id}`,
     title: sgEvent.title || sgEvent.short_title || 'Untitled Event',
     description: sgEvent.description || '',
     date: date,
@@ -119,18 +125,18 @@ const transformEvent = (sgEvent) => {
     ticketUrl: sgEvent.url || '',
     source: 'seatgeek',
     active: true,
-    // Store venue name for deduplication
     venueName: venue.name || '',
   };
 };
 
-// Search events by location
+// Search events by location with optional category filtering
 export const searchEvents = async (options = {}) => {
   const {
     latitude,
     longitude,
     radius = 50,
-    size = 50,
+    size = 100,  // Increased to get more variety
+    categories = [],  // NEW: array of category IDs to filter by
   } = options;
 
   if (!SEATGEEK_CLIENT_ID) {
@@ -139,35 +145,79 @@ export const searchEvents = async (options = {}) => {
   }
 
   try {
-    let url = `${BASE_URL}/events?client_id=${SEATGEEK_CLIENT_ID}`;
-    url += `&per_page=${size}`;
-    url += `&sort=datetime_local.asc`;
+    let allEvents = [];
     
-    if (latitude && longitude) {
-      url += `&lat=${latitude}&lon=${longitude}`;
-      url += `&range=${radius}mi`;
+    // If specific categories requested, fetch each separately
+    if (categories.length > 0 && categories.length < 5) {
+      console.log('Fetching SeatGeek events for categories:', categories);
+      
+      for (const category of categories) {
+        let url = `${BASE_URL}/events?client_id=${SEATGEEK_CLIENT_ID}`;
+        url += `&per_page=${Math.ceil(size / categories.length)}`;
+        url += `&sort=datetime_local.asc`;
+        
+        if (latitude && longitude) {
+          url += `&lat=${latitude}&lon=${longitude}`;
+          url += `&range=${radius}mi`;
+        }
+        
+        // Add category-specific filtering using taxonomies
+        if (TAXONOMY_IDS[category]) {
+          url += `&taxonomies.name=${TAXONOMY_IDS[category]}`;
+        }
+        
+        console.log(`Fetching ${category} from SeatGeek...`);
+        
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          if (response.ok && data.events) {
+            const events = data.events.map(transformEvent);
+            console.log(`Found ${events.length} ${category} events from SeatGeek`);
+            allEvents = [...allEvents, ...events];
+          }
+        } catch (err) {
+          console.log(`Error fetching ${category}:`, err.message);
+        }
+      }
+    } else {
+      // No specific categories or too many - fetch all
+      let url = `${BASE_URL}/events?client_id=${SEATGEEK_CLIENT_ID}`;
+      url += `&per_page=${size}`;
+      url += `&sort=datetime_local.asc`;
+      
+      if (latitude && longitude) {
+        url += `&lat=${latitude}&lon=${longitude}`;
+        url += `&range=${radius}mi`;
+      }
+
+      console.log('Fetching all events from SeatGeek...');
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('SeatGeek API error:', data);
+        return { success: false, error: data.message || 'API error', events: [] };
+      }
+
+      allEvents = (data.events || []).map(transformEvent);
+    }
+    
+    // Remove duplicates (same event ID)
+    const uniqueEvents = [];
+    const seenIds = new Set();
+    for (const event of allEvents) {
+      if (!seenIds.has(event.id)) {
+        seenIds.add(event.id);
+        uniqueEvents.push(event);
+      }
     }
 
-    console.log('Fetching from SeatGeek...');
+    console.log(`Total unique events from SeatGeek: ${uniqueEvents.length}`);
     
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('SeatGeek API error:', data);
-      return { 
-        success: false, 
-        error: data.message || 'API error', 
-        events: [] 
-      };
-    }
-
-    const events = data.events || [];
-    const transformedEvents = events.map(transformEvent);
-
-    console.log(`Found ${transformedEvents.length} events from SeatGeek`);
-    
-    return { success: true, events: transformedEvents };
+    return { success: true, events: uniqueEvents };
   } catch (error) {
     console.error('Error fetching SeatGeek events:', error);
     return { success: false, error: error.message, events: [] };
