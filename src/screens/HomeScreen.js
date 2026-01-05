@@ -1,21 +1,21 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
-import Swiper from 'react-native-deck-swiper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
+import CardSwiper from '../components/CardSwiper';
 import * as Location from 'expo-location';
 import { submitReport } from '../services/reportService';
 
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
-  const [cardIndex, setCardIndex] = useState(0);
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [swiperKey, setSwiperKey] = useState(0); // For resetting swiper
   const [filters, setFilters] = useState({
     distance: 25,
     timeRange: 'month',
@@ -23,36 +23,33 @@ export default function HomeScreen() {
     location: null,
   });
   const { user } = useAuth();
-  const swiperRef = useRef(null);
 
   const loadEvents = async (currentFilters = filters) => {
-  setLoading(true);
-  
-  // Try to get user's location
-  let location = null;
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
-      const position = await Location.getCurrentPositionAsync({});
-      location = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      console.log('User location:', location);
+    setLoading(true);
+    
+    let location = null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const position = await Location.getCurrentPositionAsync({});
+        location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        console.log('User location:', location);
+      }
+    } catch (error) {
+      console.log('Could not get location:', error);
     }
-  } catch (error) {
-    console.log('Could not get location:', error);
-  }
-  
-  // Pass filters to getEvents
-  const result = await getEvents(user?.uid, location, currentFilters);
-  if (result.success) {
-    setEvents(result.events);
-    setAllSwiped(result.events.length === 0);
-    setCardIndex(0);
-  }
-  setLoading(false);
-};
+    
+    const result = await getEvents(user?.uid, location, currentFilters);
+    if (result.success) {
+      setEvents(result.events);
+      setAllSwiped(result.events.length === 0);
+      setSwiperKey(prev => prev + 1); // Reset swiper when events reload
+    }
+    setLoading(false);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -60,8 +57,7 @@ export default function HomeScreen() {
     }, [user])
   );
 
-  const onSwipedLeft = async (index) => {
-    const event = events[index];
+  const onSwipedLeft = async (index, event) => {
     console.log('Passed on:', event?.title);
     
     if (user?.uid && event) {
@@ -69,8 +65,7 @@ export default function HomeScreen() {
     }
   };
 
-  const onSwipedRight = async (index) => {
-    const event = events[index];
+  const onSwipedRight = async (index, event) => {
     console.log('Saving:', event?.title);
     
     if (user?.uid && event) {
@@ -98,13 +93,11 @@ export default function HomeScreen() {
     setFilters(newFilters);
     console.log('Applied filters:', newFilters);
     setAllSwiped(false);
-    setCardIndex(0);
-    // Reload events with new filters
     loadEvents(newFilters);
   };
 
-  const handleCardTap = (index) => {
-    setSelectedEvent(events[index]);
+  const handleCardTap = (event) => {
+    setSelectedEvent(event);
   };
 
   const handleModalSave = async () => {
@@ -117,46 +110,40 @@ export default function HomeScreen() {
       };
       
       await saveEvent(user.uid, eventToSave);
-      swiperRef.current?.swipeRight();
+      setSelectedEvent(null);
     }
   };
 
   const handleReport = async (event, reason, details) => {
-  if (!user?.uid) {
-    Alert.alert('Sign in required', 'Please sign in to report events.');
-    return;
-  }
-  await submitReport(event.id, user.uid, reason, details, event);
-};
-
+    if (!user?.uid) {
+      Alert.alert('Sign in required', 'Please sign in to report events.');
+      return;
+    }
+    await submitReport(event.id, user.uid, reason, details, event);
+  };
 
   const handleModalPass = async () => {
     if (selectedEvent && user?.uid) {
       await passEvent(user.uid, selectedEvent.id);
-      swiperRef.current?.swipeLeft();
+      setSelectedEvent(null);
     }
   };
 
   const renderCard = (event, index) => {
     if (!event) return null;
     
-    const handleTicketPress = (e) => {
-      e.stopPropagation(); // Prevent card tap
+    const handleTicketPress = () => {
       if (event.ticketUrl) {
-        // Has direct link - use it
         Linking.openURL(event.ticketUrl);
       } else if (event.source === 'ticketmaster') {
-        // Ticketmaster event without URL - search Ticketmaster
-        // Clean up the title for better search results (remove venue, date info, etc.)
         let searchTitle = event.title
-          .split(' - ')[0]  // Remove everything after " - "
-          .split(' at ')[0] // Remove "at Venue"
-          .split(' @ ')[0]  // Remove "@ Venue"
+          .split(' - ')[0]
+          .split(' at ')[0]
+          .split(' @ ')[0]
           .trim();
         const searchQuery = encodeURIComponent(searchTitle);
         Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
       } else if (event.source === 'seatgeek') {
-        // SeatGeek event without URL - search SeatGeek
         let searchTitle = event.title
           .split(' - ')[0]
           .split(' at ')[0]
@@ -165,18 +152,13 @@ export default function HomeScreen() {
         const searchQuery = encodeURIComponent(searchTitle);
         Linking.openURL(`https://seatgeek.com/search?search=${searchQuery}`);
       } else {
-        // Other - search Google for the event
         const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
         Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
       }
     };
     
     return (
-      <TouchableOpacity 
-        activeOpacity={0.95}
-        onPress={() => handleCardTap(index)}
-        style={styles.card}
-      >
+      <View style={styles.card}>
         <Image source={{ uri: event.image }} style={styles.cardImage} />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -187,9 +169,9 @@ export default function HomeScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.title}>{event.title}</Text>
+          <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
           <Text style={styles.date}>{event.date} • {event.time}</Text>
-          <Text style={styles.location}>{event.location}</Text>
+          <Text style={styles.location} numberOfLines={1}>{event.location}</Text>
           {event.price && event.price !== 'See tickets' && (
             <View style={styles.priceTag}>
               <Text style={styles.priceText}>{event.price}</Text>
@@ -199,7 +181,7 @@ export default function HomeScreen() {
         <View style={styles.tapHint}>
           <Text style={styles.tapHintText}>Tap for details</Text>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -259,69 +241,14 @@ export default function HomeScreen() {
         ) : allSwiped || events.length === 0 ? (
           renderEmptyState()
         ) : (
-          <Swiper
-            ref={swiperRef}
+          <CardSwiper
+            key={swiperKey}
             cards={events}
             renderCard={renderCard}
             onSwipedLeft={onSwipedLeft}
             onSwipedRight={onSwipedRight}
             onSwipedAll={onSwipedAll}
-            cardIndex={cardIndex}
-            backgroundColor={'#f5f5f5'}
-            stackSize={3}
-            stackSeparation={15}
-            stackScale={8}
-            infinite={false}
-            showSecondCard={true}
-            animateCardOpacity={true}
-            animateOverlayLabelsOpacity={true}
-            disableBottomSwipe={true}
-            disableTopSwipe={true}
-            outputRotationRange={["-10deg", "0deg", "10deg"]}
-            cardVerticalMargin={20}
-            cardHorizontalMargin={20}
-            useViewOverflow={false}
-            containerStyle={styles.swiperContent}
-            overlayLabels={{
-              left: {
-                title: 'NOPE',
-                style: {
-                  label: {
-                    backgroundColor: '#FF6B6B',
-                    color: 'white',
-                    fontSize: 24,
-                    borderRadius: 8,
-                    padding: 10,
-                  },
-                  wrapper: {
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    justifyContent: 'flex-start',
-                    marginTop: 30,
-                    marginLeft: -30,
-                  },
-                },
-              },
-              right: {
-                title: 'SAVE',
-                style: {
-                  label: {
-                    backgroundColor: '#4ECDC4',
-                    color: 'white',
-                    fontSize: 24,
-                    borderRadius: 8,
-                    padding: 10,
-                  },
-                  wrapper: {
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'flex-start',
-                    marginTop: 30,
-                    marginLeft: 30,
-                  },
-                },
-              },
-            }}
+            onCardTap={handleCardTap}
           />
         )}
       </View>
@@ -390,11 +317,8 @@ const styles = StyleSheet.create({
   swiperContainer: {
     flex: 1,
   },
-  swiperContent: {
-    backgroundColor: '#f5f5f5',
-  },
   card: {
-    height: 450,
+    flex: 1,
     borderRadius: 16,
     backgroundColor: '#fff',
     shadowColor: '#000',
@@ -406,10 +330,11 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     width: '100%',
-    height: 220,
+    height: '50%',
   },
   cardContent: {
     padding: 20,
+    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -423,12 +348,8 @@ const styles = StyleSheet.create({
     color: '#4ECDC4',
     textTransform: 'uppercase',
   },
-  distance: {
-    fontSize: 14,
-    color: '#999',
-  },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
