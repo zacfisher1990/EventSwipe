@@ -29,6 +29,24 @@ export default function CardSwiper({
   const swipeInProgress = useRef(false);
   const tapStart = useRef({ x: 0, y: 0, time: 0 });
 
+  // Refs to access current values inside panResponder (avoids stale closures)
+  const currentIndexRef = useRef(currentIndex);
+  const cardsRef = useRef(cards);
+  const onCardTapRef = useRef(onCardTap);
+  
+  // Keep refs updated
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+  
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+  
+  useEffect(() => {
+    onCardTapRef.current = onCardTap;
+  }, [onCardTap]);
+
   // Reset position when currentIndex changes
   useEffect(() => {
     position.setValue({ x: 0, y: 0 });
@@ -54,14 +72,13 @@ export default function CardSwiper({
       duration: SWIPE_OUT_DURATION,
       useNativeDriver: true,
     }).start(() => {
-      const item = cards[currentIndex];
-      const index = currentIndex;
+      const item = cardsRef.current[currentIndexRef.current];
+      const index = currentIndexRef.current;
       
       // Update index FIRST (this triggers useEffect to reset position)
       setCurrentIndex(prev => {
         const next = prev + 1;
-        if (next >= cards.length) {
-          // Delay the onSwipedAll callback slightly
+        if (next >= cardsRef.current.length) {
           setTimeout(() => onSwipedAll?.(), 50);
         }
         return next;
@@ -79,7 +96,19 @@ export default function CardSwiper({
         swipeInProgress.current = false;
       }, 50);
     });
-  }, [currentIndex, cards, onSwipedLeft, onSwipedRight, onSwipedAll, position]);
+  }, [onSwipedLeft, onSwipedRight, onSwipedAll, position]);
+
+  // Store function refs for panResponder
+  const swipeOffScreenRef = useRef(swipeOffScreen);
+  const resetPositionRef = useRef(resetPosition);
+  
+  useEffect(() => {
+    swipeOffScreenRef.current = swipeOffScreen;
+  }, [swipeOffScreen]);
+  
+  useEffect(() => {
+    resetPositionRef.current = resetPosition;
+  }, [resetPosition]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -106,20 +135,21 @@ export default function CardSwiper({
         const dy = evt.nativeEvent.pageY - tapStart.current.y;
         const duration = Date.now() - tapStart.current.time;
         
-        // Check if it was a tap
+        // Check if it was a tap - use refs to get current values
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && duration < 200) {
-          onCardTap?.(cards[currentIndex]);
-          resetPosition();
+          const currentCard = cardsRef.current[currentIndexRef.current];
+          onCardTapRef.current?.(currentCard);
+          resetPositionRef.current();
           return;
         }
 
         // Check for swipe
         if (gesture.dx > SWIPE_THRESHOLD || gesture.vx > 0.5) {
-          swipeOffScreen('right');
+          swipeOffScreenRef.current('right');
         } else if (gesture.dx < -SWIPE_THRESHOLD || gesture.vx < -0.5) {
-          swipeOffScreen('left');
+          swipeOffScreenRef.current('left');
         } else {
-          resetPosition();
+          resetPositionRef.current();
         }
       },
     })
