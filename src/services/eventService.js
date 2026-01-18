@@ -66,14 +66,16 @@ const isDuplicate = (event1, event2) => {
   return false;
 };
 
-// Remove duplicates, preferring Ticketmaster events
+// Remove duplicates, preferring Ticketmaster > SeatGeek > Firebase
 const deduplicateEvents = (events) => {
   const result = [];
   
+  // Sort by source priority: ticketmaster first, then seatgeek, then firebase
   const sorted = [...events].sort((a, b) => {
-    if (a.source === 'ticketmaster' && b.source !== 'ticketmaster') return -1;
-    if (a.source !== 'ticketmaster' && b.source === 'ticketmaster') return 1;
-    return 0;
+    const priority = { ticketmaster: 0, seatgeek: 1, firebase: 2 };
+    const aPriority = priority[a.source] ?? 3;
+    const bPriority = priority[b.source] ?? 3;
+    return aPriority - bPriority;
   });
   
   for (const event of sorted) {
@@ -321,12 +323,12 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     );
     
     const snapshot = await getDocs(q);
-    let events = snapshot.docs.map(doc => ({
+    let firebaseEvents = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       source: 'firebase',
     }));
-    console.log(`Firebase events: ${events.length}`);
+    console.log(`Firebase events: ${firebaseEvents.length}`);
     
     // Determine which categories to request from APIs
     const selectedCategories = filters?.categories || [];
@@ -359,7 +361,7 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       searchSeatGeek(apiOptions),
     ]);
     
-    // Collect API events for deduplication
+    // Collect API events
     let apiEvents = [];
     
     if (tmResult.success && tmResult.events.length > 0) {
@@ -376,15 +378,16 @@ export const getEvents = async (userId = null, location = null, filters = null) 
       console.error('SeatGeek error:', sgResult.error);
     }
     
-    // Deduplicate API events
-    const deduplicatedApiEvents = deduplicateEvents(apiEvents);
-    console.log(`After deduplication: ${deduplicatedApiEvents.length} API events (removed ${apiEvents.length - deduplicatedApiEvents.length} duplicates)`);
+    // ========================================
+    // DEDUPLICATION: Across ALL sources
+    // ========================================
+    // Combine all events and deduplicate together
+    // Priority: Ticketmaster > SeatGeek > Firebase
+    let allEvents = [...firebaseEvents, ...apiEvents];
+    console.log(`Total events before deduplication: ${allEvents.length}`);
     
-    // Merge with Firebase events
-    const existingIds = new Set(events.map(e => e.id));
-    const newEvents = deduplicatedApiEvents.filter(e => !existingIds.has(e.id));
-    events = [...events, ...newEvents];
-    console.log(`Total after merge: ${events.length}`);
+    let events = deduplicateEvents(allEvents);
+    console.log(`After deduplication: ${events.length} (removed ${allEvents.length - events.length} duplicates)`);
     
     // ========================================
     // FILTER 1: Distance
