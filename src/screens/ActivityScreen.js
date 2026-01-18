@@ -39,6 +39,14 @@ const parseEventDate = (dateString) => {
   return isNaN(date.getTime()) ? null : date;
 };
 
+// Get valid image URL (handles blob: URLs that don't work on mobile)
+const getImageUri = (event) => {
+  if (!event?.image || event.image.startsWith('blob:')) {
+    return `https://picsum.photos/400/300?random=${event?.id || Math.random()}`;
+  }
+  return event.image;
+};
+
 export default function ActivityScreen() {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -120,7 +128,7 @@ export default function ActivityScreen() {
       onPress={() => setSelectedEvent(item)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: item.image }} style={styles.eventImage} />
+      <Image source={{ uri: getImageUri(item) }} style={styles.eventImage} />
       <View style={styles.eventInfo}>
         <View style={styles.reminderBadge}>
           <Ionicons name="time-outline" size={14} color="#4ECDC4" />
@@ -139,7 +147,7 @@ export default function ActivityScreen() {
       onPress={() => setSelectedEvent(item)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: item.image }} style={styles.eventImage} />
+      <Image source={{ uri: getImageUri(item) }} style={styles.eventImage} />
       <View style={styles.eventInfo}>
         <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
         <Text style={styles.eventDate}>{item.date} • {item.time}</Text>

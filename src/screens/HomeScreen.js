@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const [filters, setFilters] = useState({
     distance: 25,
     timeRange: 'month',
-    categories: [],
+    categories: null,
     location: null,
   });
   const { user } = useAuth();
