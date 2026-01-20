@@ -25,6 +25,7 @@ export default function CardSwiper({
   onCardTap,
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const swipeInProgress = useRef(false);
   const tapStart = useRef({ x: 0, y: 0, time: 0 });
@@ -117,6 +118,7 @@ export default function CardSwiper({
         return Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5;
       },
       onPanResponderGrant: (evt) => {
+        setIsDragging(true);
         tapStart.current = {
           x: evt.nativeEvent.pageX,
           y: evt.nativeEvent.pageY,
@@ -129,6 +131,7 @@ export default function CardSwiper({
         }
       },
       onPanResponderRelease: (evt, gesture) => {
+        setIsDragging(false);
         if (swipeInProgress.current) return;
 
         const dx = evt.nativeEvent.pageX - tapStart.current.x;
@@ -277,19 +280,23 @@ export default function CardSwiper({
           >
             {renderCard(item, actualIndex)}
             
-            {/* NOPE overlay */}
-            <Animated.View style={[styles.overlay, styles.overlayLeft, { opacity: nopeOpacity }]}>
-              <View style={[styles.labelBox, styles.nopeBox]}>
-                <Text style={styles.labelText}>NOPE</Text>
-              </View>
-            </Animated.View>
+            {/* NOPE overlay - only show while dragging */}
+            {isDragging && (
+              <Animated.View style={[styles.overlay, styles.overlayLeft, { opacity: nopeOpacity }]}>
+                <View style={[styles.labelBox, styles.nopeBox]}>
+                  <Text style={styles.labelText}>NOPE</Text>
+                </View>
+              </Animated.View>
+            )}
             
-            {/* SAVE overlay */}
-            <Animated.View style={[styles.overlay, styles.overlayRight, { opacity: likeOpacity }]}>
-              <View style={[styles.labelBox, styles.likeBox]}>
-                <Text style={styles.labelText}>SAVE</Text>
-              </View>
-            </Animated.View>
+            {/* SAVE overlay - only show while dragging */}
+            {isDragging && (
+              <Animated.View style={[styles.overlay, styles.overlayRight, { opacity: likeOpacity }]}>
+                <View style={[styles.labelBox, styles.likeBox]}>
+                  <Text style={styles.labelText}>SAVE</Text>
+                </View>
+              </Animated.View>
+            )}
           </Animated.View>
         );
       }
