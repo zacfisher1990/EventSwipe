@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  TextInput,
+  ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
@@ -43,12 +46,118 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   const [location, setLocation] = useState(filters?.location || null);
   const [locationError, setLocationError] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  
+  // Location search state
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [isCustomLocation, setIsCustomLocation] = useState(filters?.isCustomLocation || false);
 
   useEffect(() => {
     if (visible && !location) {
       requestLocation();
     }
   }, [visible]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchLocation(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const searchLocation = async (query) => {
+    if (!query.trim()) return;
+    
+    setSearching(true);
+    try {
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+      const url = Platform.OS === 'web' 
+        ? `https://corsproxy.io/?${encodeURIComponent(nominatimUrl)}`
+        : nominatimUrl;
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'EventSwipe App'
+        }
+      });
+      const data = await response.json();
+      
+      // Filter and format results - prefer cities, towns, and notable places
+      const formattedResults = data
+        .filter(item => {
+          const type = item.type;
+          const placeClass = item.class;
+          // Include cities, towns, villages, administrative areas, and notable places
+          return placeClass === 'place' || 
+                 placeClass === 'boundary' || 
+                 type === 'city' || 
+                 type === 'town' || 
+                 type === 'village' ||
+                 type === 'administrative';
+        })
+        .map(item => ({
+          id: item.place_id,
+          name: item.address?.city || 
+                item.address?.town || 
+                item.address?.village || 
+                item.address?.municipality ||
+                item.name || 
+                item.display_name.split(',')[0],
+          region: item.address?.state || item.address?.country || '',
+          country: item.address?.country || '',
+          displayName: item.display_name,
+          coords: {
+            latitude: parseFloat(item.lat),
+            longitude: parseFloat(item.lon),
+          }
+        }));
+      
+      // If no filtered results, show all results
+      if (formattedResults.length === 0 && data.length > 0) {
+        const allResults = data.map(item => ({
+          id: item.place_id,
+          name: item.display_name.split(',')[0],
+          region: item.address?.state || item.address?.country || '',
+          country: item.address?.country || '',
+          displayName: item.display_name,
+          coords: {
+            latitude: parseFloat(item.lat),
+            longitude: parseFloat(item.lon),
+          }
+        }));
+        setSearchResults(allResults);
+      } else {
+        setSearchResults(formattedResults);
+      }
+    } catch (error) {
+      console.log('Location search error:', error);
+      setSearchResults([]);
+    }
+    setSearching(false);
+  };
+
+  const selectSearchResult = (result) => {
+    setLocation({
+      coords: result.coords,
+      city: result.name,
+      region: result.region,
+      country: result.country,
+    });
+    setIsCustomLocation(true);
+    setShowLocationSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    Keyboard.dismiss();
+  };
 
   const requestLocation = async () => {
     setLoadingLocation(true);
@@ -96,6 +205,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           city: cityName,
           region: regionName,
         });
+        setIsCustomLocation(false);
       } catch (geocodeError) {
         console.log('Geocoding error:', geocodeError);
         setLocation({
@@ -103,12 +213,20 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           city: 'Your Area',
           region: '',
         });
+        setIsCustomLocation(false);
       }
     } catch (error) {
       setLocationError('Could not get location');
     }
     
     setLoadingLocation(false);
+  };
+
+  const useMyLocation = () => {
+    setShowLocationSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    requestLocation();
   };
 
   const toggleCategory = (categoryId) => {
@@ -135,6 +253,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
       timeRange,
       categories: selectedCategories,
       location,
+      isCustomLocation,
     });
     onClose();
   };
@@ -143,6 +262,8 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
     setDistance(25);
     setTimeRange('month');
     setSelectedCategories(CATEGORIES.map(c => c.id));
+    setIsCustomLocation(false);
+    requestLocation();
   };
 
   return (
@@ -164,24 +285,119 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Location Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📍 Location</Text>
-              {loadingLocation ? (
-                <Text style={styles.locationText}>Getting your location...</Text>
-              ) : locationError ? (
-                <TouchableOpacity onPress={requestLocation}>
-                  <Text style={styles.locationError}>{locationError} - Tap to retry</Text>
-                </TouchableOpacity>
-              ) : location ? (
-                <Text style={styles.locationText}>
-                  {location.city}, {location.region}
-                </Text>
+              
+              {!showLocationSearch ? (
+                // Current location display
+                <View style={styles.locationDisplay}>
+                  {loadingLocation ? (
+                    <View style={styles.locationLoading}>
+                      <ActivityIndicator size="small" color="#4ECDC4" />
+                      <Text style={styles.locationLoadingText}>Getting your location...</Text>
+                    </View>
+                  ) : locationError ? (
+                    <TouchableOpacity onPress={requestLocation}>
+                      <Text style={styles.locationError}>{locationError} - Tap to retry</Text>
+                    </TouchableOpacity>
+                  ) : location ? (
+                    <View style={styles.locationInfo}>
+                      <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationText}>
+                          {location.city}{location.region ? `, ${location.region}` : ''}
+                        </Text>
+                        {isCustomLocation && (
+                          <Text style={styles.customLocationBadge}>Custom</Text>
+                        )}
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.changeLocationButton}
+                        onPress={() => setShowLocationSearch(true)}
+                      >
+                        <Text style={styles.changeLocationText}>Change</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity onPress={requestLocation}>
+                      <Text style={styles.locationButton}>Enable Location</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               ) : (
-                <TouchableOpacity onPress={requestLocation}>
-                  <Text style={styles.locationButton}>Enable Location</Text>
-                </TouchableOpacity>
+                // Location search interface
+                <View style={styles.locationSearch}>
+                  <View style={styles.searchInputContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search city or location..."
+                      placeholderTextColor="#999"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      autoFocus={true}
+                      returnKeyType="search"
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity 
+                        style={styles.clearButton}
+                        onPress={() => setSearchQuery('')}
+                      >
+                        <Text style={styles.clearButtonText}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  
+                  {/* Use My Location option */}
+                  <TouchableOpacity 
+                    style={styles.useMyLocationButton}
+                    onPress={useMyLocation}
+                  >
+                    <Text style={styles.useMyLocationIcon}>📍</Text>
+                    <Text style={styles.useMyLocationText}>Use My Current Location</Text>
+                  </TouchableOpacity>
+                  
+                  {/* Search results */}
+                  {searching ? (
+                    <View style={styles.searchingContainer}>
+                      <ActivityIndicator size="small" color="#4ECDC4" />
+                      <Text style={styles.searchingText}>Searching...</Text>
+                    </View>
+                  ) : searchResults.length > 0 ? (
+                    <View style={styles.searchResults}>
+                      {searchResults.map((result) => (
+                        <TouchableOpacity
+                          key={result.id}
+                          style={styles.searchResultItem}
+                          onPress={() => selectSearchResult(result)}
+                        >
+                          <Text style={styles.searchResultName}>{result.name}</Text>
+                          <Text style={styles.searchResultRegion}>
+                            {result.region}{result.country && result.region ? ', ' : ''}{result.country}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : searchQuery.length >= 2 ? (
+                    <Text style={styles.noResultsText}>No locations found</Text>
+                  ) : null}
+                  
+                  {/* Cancel search button */}
+                  <TouchableOpacity 
+                    style={styles.cancelSearchButton}
+                    onPress={() => {
+                      setShowLocationSearch(false);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                  >
+                    <Text style={styles.cancelSearchText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -334,6 +550,19 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
+  // Location styles
+  locationDisplay: {
+    marginTop: -4,
+  },
+  locationLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationLoadingText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#666',
+  },
   locationText: {
     fontSize: 16,
     color: '#666',
@@ -347,6 +576,127 @@ const styles = StyleSheet.create({
     color: '#4ECDC4',
     fontWeight: '600',
   },
+  locationInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  customLocationBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: '#4ECDC4',
+    borderRadius: 10,
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+    overflow: 'hidden',
+  },
+  changeLocationButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+  },
+  changeLocationText: {
+    fontSize: 14,
+    color: '#4ECDC4',
+    fontWeight: '600',
+  },
+  // Location search styles
+  locationSearch: {
+    marginTop: -4,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  clearButton: {
+    padding: 4,
+  },
+  clearButtonText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  useMyLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  useMyLocationIcon: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  useMyLocationText: {
+    fontSize: 16,
+    color: '#4ECDC4',
+    fontWeight: '600',
+  },
+  searchingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  searchingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+  },
+  searchResults: {
+    marginTop: 4,
+  },
+  searchResultItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  searchResultName: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  searchResultRegion: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    paddingVertical: 16,
+    fontSize: 14,
+    color: '#999',
+  },
+  cancelSearchButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  cancelSearchText: {
+    fontSize: 16,
+    color: '#999',
+    fontWeight: '500',
+  },
+  // Other styles
   distanceValue: {
     fontSize: 16,
     fontWeight: '600',

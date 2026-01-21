@@ -21,6 +21,7 @@ export default function HomeScreen() {
     timeRange: 'month',
     categories: null,
     location: null,
+    isCustomLocation: false,
   });
   const { user } = useAuth();
 
@@ -28,18 +29,31 @@ export default function HomeScreen() {
     setLoading(true);
     
     let location = null;
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const position = await Location.getCurrentPositionAsync({});
-        location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        console.log('User location:', location);
+    
+    // Check if we have a custom location set in filters
+    if (currentFilters.location?.coords) {
+      // Use the location from filters (either custom or previously fetched GPS)
+      location = {
+        latitude: currentFilters.location.coords.latitude,
+        longitude: currentFilters.location.coords.longitude,
+      };
+      console.log('Using location from filters:', location, 
+        currentFilters.isCustomLocation ? '(custom)' : '(GPS)');
+    } else {
+      // No location in filters yet, fetch GPS
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const position = await Location.getCurrentPositionAsync({});
+          location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          console.log('Fetched GPS location:', location);
+        }
+      } catch (error) {
+        console.log('Could not get location:', error);
       }
-    } catch (error) {
-      console.log('Could not get location:', error);
     }
     
     const result = await getEvents(user?.uid, location, currentFilters);
@@ -190,7 +204,7 @@ export default function HomeScreen() {
       <Text style={styles.emptyEmoji}>🎉</Text>
       <Text style={styles.emptyTitle}>You're all caught up!</Text>
       <Text style={styles.emptyText}>
-        No more events to show near you.{'\n'}Check back later or adjust your filters.
+        No more events to show{filters.isCustomLocation ? ` in ${filters.location?.city}` : ' near you'}.{'\n'}Check back later or adjust your filters.
       </Text>
       <TouchableOpacity 
         style={styles.emptyButton} 
@@ -200,7 +214,7 @@ export default function HomeScreen() {
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.emptyButton, styles.refreshButton]} 
-        onPress={loadEvents}
+        onPress={() => loadEvents(filters)}
       >
         <Text style={styles.emptyButtonText}>Refresh Events</Text>
       </TouchableOpacity>
@@ -210,7 +224,9 @@ export default function HomeScreen() {
   const renderLoading = () => (
     <View style={styles.loadingState}>
       <ActivityIndicator size="large" color="#4ECDC4" />
-      <Text style={styles.loadingText}>Finding events near you...</Text>
+      <Text style={styles.loadingText}>
+        Finding events{filters.isCustomLocation ? ` in ${filters.location?.city}` : ' near you'}...
+      </Text>
     </View>
   );
 
@@ -228,9 +244,9 @@ export default function HomeScreen() {
       </View>
 
       {filters.location && (
-        <View style={styles.locationBar}>
+        <View style={[styles.locationBar, filters.isCustomLocation && styles.customLocationBar]}>
           <Text style={styles.locationBarText}>
-            {filters.location.city} • {filters.distance} mi • {filters.timeRange}
+            {filters.isCustomLocation && '📍 '}{filters.location.city}{filters.location.region ? `, ${filters.location.region}` : ''} • {filters.distance} mi • {filters.timeRange}
           </Text>
         </View>
       )}
@@ -308,6 +324,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 20,
     zIndex: 10,
+  },
+  customLocationBar: {
+    backgroundColor: '#FF6B6B',
   },
   locationBarText: {
     color: '#fff',
