@@ -10,6 +10,7 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -475,6 +476,25 @@ export default function AuthModal() {
                 </Text>
               </Text>
             </TouchableOpacity>
+
+            <View style={styles.legalContainer}>
+              <Text style={styles.legalText}>
+                By continuing, you agree to our{' '}
+                <Text 
+                  style={styles.legalLink} 
+                  onPress={() => Linking.openURL('https://eventswipeapp.com/#terms')}
+                >
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text 
+                  style={styles.legalLink} 
+                  onPress={() => Linking.openURL('https://eventswipeapp.com/#privacy')}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
@@ -643,5 +663,19 @@ const styles = StyleSheet.create({
   error: {
     color: '#FF6B6B',
     fontSize: 14,
+  },
+  legalContainer: {
+    marginTop: 16,
+    paddingHorizontal: 10,
+  },
+  legalText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: '#4ECDC4',
+    fontWeight: '600',
   },
 });
