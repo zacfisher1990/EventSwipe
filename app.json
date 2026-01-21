@@ -2,7 +2,7 @@
   "expo": {
     "name": "EventSwipe: Events Near You",
     "slug": "EventSwipe",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
       "backgroundColor": "#4ECDC4"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.eventswipeapp.eventswipe",
       "buildNumber": "1",
       "infoPlist": {
