@@ -18,6 +18,7 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "EventSwipe uses your location to find events near you.",
+        "NSPhotoLibraryUsageDescription": "EventSwipe needs access to your photo library so you can select images to include with events you create and share with other users.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

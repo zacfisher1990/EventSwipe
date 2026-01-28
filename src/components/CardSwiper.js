@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,14 +16,14 @@ const SWIPE_OUT_DURATION = 200;
  * CardSwiper - A polished swiper using only React Native's built-in Animated API
  * No react-native-reanimated or react-native-gesture-handler required
  */
-export default function CardSwiper({
+const CardSwiper = forwardRef(function CardSwiper({
   cards = [],
   renderCard,
   onSwipedLeft,
   onSwipedRight,
   onSwipedAll,
   onCardTap,
-}) {
+}, ref) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
@@ -110,6 +110,12 @@ export default function CardSwiper({
   useEffect(() => {
     resetPositionRef.current = resetPosition;
   }, [resetPosition]);
+
+  // Expose swipeLeft and swipeRight methods via ref
+  useImperativeHandle(ref, () => ({
+    swipeLeft: () => swipeOffScreenRef.current('left'),
+    swipeRight: () => swipeOffScreenRef.current('right'),
+  }));
 
   const panResponder = useRef(
     PanResponder.create({
@@ -306,7 +312,9 @@ export default function CardSwiper({
   };
 
   return <View style={styles.container}>{renderCards()}</View>;
-}
+});
+
+export default CardSwiper;
 
 const styles = StyleSheet.create({
   container: {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
     isCustomLocation: false,
   });
   const { user } = useAuth();
+  const swiperRef = useRef(null);
 
   const loadEvents = async (currentFilters = filters) => {
     setLoading(true);
@@ -114,17 +115,11 @@ export default function HomeScreen() {
     setSelectedEvent(event);
   };
 
-  const handleModalSave = async () => {
-    if (selectedEvent && user?.uid) {
-      const eventToSave = {
-        ...selectedEvent,
-        image: selectedEvent.image && !selectedEvent.image.startsWith('blob:') 
-          ? selectedEvent.image 
-          : `https://picsum.photos/400/300?random=${selectedEvent.id}`,
-      };
-      
-      await saveEvent(user.uid, eventToSave);
+  const handleModalSave = () => {
+    if (selectedEvent) {
       setSelectedEvent(null);
+      // Trigger the actual swipe - onSwipedRight handles the database save
+      setTimeout(() => swiperRef.current?.swipeRight(), 50);
     }
   };
 
@@ -136,10 +131,11 @@ export default function HomeScreen() {
     await submitReport(event.id, user.uid, reason, details, event);
   };
 
-  const handleModalPass = async () => {
-    if (selectedEvent && user?.uid) {
-      await passEvent(user.uid, selectedEvent.id);
+  const handleModalPass = () => {
+    if (selectedEvent) {
       setSelectedEvent(null);
+      // Trigger the actual swipe - onSwipedLeft handles the database pass
+      setTimeout(() => swiperRef.current?.swipeLeft(), 50);
     }
   };
 
@@ -258,6 +254,7 @@ export default function HomeScreen() {
           renderEmptyState()
         ) : (
           <CardSwiper
+            ref={swiperRef}
             key={swiperKey}
             cards={events}
             renderCard={renderCard}
