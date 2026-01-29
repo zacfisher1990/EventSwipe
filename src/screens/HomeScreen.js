@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { saveEvent, getEvents, passEvent } from '../services/eventService';
 import FilterModal from '../components/FilterModal';
@@ -66,11 +65,9 @@ export default function HomeScreen() {
     setLoading(false);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadEvents();
-    }, [user])
-  );
+  useEffect(() => {
+    loadEvents();
+  }, [user]);
 
   const onSwipedLeft = async (index, event) => {
     console.log('Passed on:', event?.title);

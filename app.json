@@ -28,6 +28,9 @@
         "backgroundColor": "#4ECDC4"
       },
       "edgeToEdgeEnabled": true,
+      "androidStatusBar": {
+        "barStyle": "dark-content"
+      },
       "package": "com.eventswipeapp.eventswipe",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
