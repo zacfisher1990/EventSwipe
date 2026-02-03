@@ -197,8 +197,9 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
 }
 
 // Main EventDetailsModal Component
-export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport }) {
+export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport, isOwner = false, onDelete }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const isClosing = useRef(false);
@@ -343,6 +344,28 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Event',
+      'Are you sure you want to delete this event? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            if (onDelete) {
+              await onDelete(event.id);
+            }
+            setIsDeleting(false);
+            handleClose();
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -454,7 +477,29 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
 
         {/* Action Bar */}
         <View style={styles.actionBar}>
-          {isSavedView ? (
+          {isOwner ? (
+            // Delete and Close buttons for owner's events
+            <>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#FF6B6B" />
+                ) : (
+                  <Ionicons name="trash-outline" size={28} color="#FF6B6B" />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.closeButtonStyle]}
+                onPress={handleClose}
+              >
+                <Ionicons name="close" size={32} color="#666" />
+              </TouchableOpacity>
+            </>
+          ) : isSavedView ? (
             // Just close button for saved view
             <TouchableOpacity 
               style={[styles.actionButton, styles.closeButtonStyle]}
@@ -689,6 +734,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#666',
+  },
+  deleteButton: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
   },
 });
 

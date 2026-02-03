@@ -7,11 +7,12 @@ import {
   Image,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { getUserEvents, getSavedEvents, unsaveEvent } from '../services/eventService';
+import { getUserEvents, getSavedEvents, unsaveEvent, deleteEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
 
 // Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
@@ -104,6 +105,18 @@ export default function ActivityScreen() {
       // Remove from local state
       setUpcomingEvents(prev => prev.filter(e => e.id !== selectedEvent.id));
       setSelectedEvent(null);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (user?.uid) {
+      const result = await deleteEvent(eventId, user.uid);
+      if (result.success) {
+        // Remove from local state
+        setPostedEvents(prev => prev.filter(e => e.id !== eventId));
+      } else {
+        Alert.alert('Error', result.error || 'Failed to delete event');
+      }
     }
   };
 
@@ -261,7 +274,9 @@ export default function ActivityScreen() {
         onClose={() => setSelectedEvent(null)}
         onSave={() => {}} // Already saved, no action needed
         onPass={activeTab === 'upcoming' ? handleUnsaveEvent : () => setSelectedEvent(null)}
-        isSavedView={true} // Always show close button in Activity screen
+        isSavedView={activeTab === 'upcoming'}
+        isOwner={activeTab === 'posted'}
+        onDelete={handleDeleteEvent}
       />
     </View>
   );

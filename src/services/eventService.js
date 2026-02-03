@@ -9,7 +9,8 @@ import {
   query,
   where,
   orderBy,
-  Timestamp 
+  Timestamp,
+  deleteDoc 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
@@ -535,5 +536,28 @@ export const getUserEvents = async (userId) => {
   } catch (error) {
     console.error('Error getting user events:', error);
     return { success: false, error: error.message, events: [] };
+  }
+};
+
+// Delete an event (only allowed by the poster)
+export const deleteEvent = async (eventId, userId) => {
+  try {
+    const eventRef = doc(db, 'events', eventId);
+    const eventDoc = await getDoc(eventRef);
+    
+    if (!eventDoc.exists()) {
+      return { success: false, error: 'Event not found' };
+    }
+    
+    // Verify the user owns this event
+    if (eventDoc.data().posterId !== userId) {
+      return { success: false, error: 'You can only delete your own events' };
+    }
+    
+    await deleteDoc(eventRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return { success: false, error: error.message };
   }
 };
