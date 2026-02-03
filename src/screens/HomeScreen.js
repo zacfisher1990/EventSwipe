@@ -7,6 +7,7 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import * as Location from 'expo-location';
 import { submitReport } from '../services/reportService';
+import i18n from '../i18n';
 
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
@@ -14,7 +15,7 @@ export default function HomeScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [swiperKey, setSwiperKey] = useState(0); // For resetting swiper
+  const [swiperKey, setSwiperKey] = useState(0);
   const [filters, setFilters] = useState({
     distance: 25,
     timeRange: 'month',
@@ -30,9 +31,7 @@ export default function HomeScreen() {
     
     let location = null;
     
-    // Check if we have a custom location set in filters
     if (currentFilters.location?.coords) {
-      // Use the location from filters (either custom or previously fetched GPS)
       location = {
         latitude: currentFilters.location.coords.latitude,
         longitude: currentFilters.location.coords.longitude,
@@ -40,7 +39,6 @@ export default function HomeScreen() {
       console.log('Using location from filters:', location, 
         currentFilters.isCustomLocation ? '(custom)' : '(GPS)');
     } else {
-      // No location in filters yet, fetch GPS
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
@@ -60,7 +58,7 @@ export default function HomeScreen() {
     if (result.success) {
       setEvents(result.events);
       setAllSwiped(result.events.length === 0);
-      setSwiperKey(prev => prev + 1); // Reset swiper when events reload
+      setSwiperKey(prev => prev + 1);
     }
     setLoading(false);
   };
@@ -115,14 +113,13 @@ export default function HomeScreen() {
   const handleModalSave = () => {
     if (selectedEvent) {
       setSelectedEvent(null);
-      // Trigger the actual swipe - onSwipedRight handles the database save
       setTimeout(() => swiperRef.current?.swipeRight(), 50);
     }
   };
 
   const handleReport = async (event, reason, details) => {
     if (!user?.uid) {
-      Alert.alert('Sign in required', 'Please sign in to report events.');
+      Alert.alert(i18n.t('errors.unauthorized'));
       return;
     }
     await submitReport(event.id, user.uid, reason, details, event);
@@ -131,7 +128,6 @@ export default function HomeScreen() {
   const handleModalPass = () => {
     if (selectedEvent) {
       setSelectedEvent(null);
-      // Trigger the actual swipe - onSwipedLeft handles the database pass
       setTimeout(() => swiperRef.current?.swipeLeft(), 50);
     }
   };
@@ -172,7 +168,9 @@ export default function HomeScreen() {
             <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
             {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
               <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
-                <Text style={styles.ticketButtonText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
+                <Text style={styles.ticketButtonText}>
+                  {event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets')}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -186,7 +184,7 @@ export default function HomeScreen() {
           )}
         </View>
         <View style={styles.tapHint}>
-          <Text style={styles.tapHintText}>Tap for details</Text>
+          <Text style={styles.tapHintText}>{i18n.t('discover.tapForDetails')}</Text>
         </View>
       </View>
     );
@@ -195,21 +193,21 @@ export default function HomeScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyEmoji}>🎉</Text>
-      <Text style={styles.emptyTitle}>You're all caught up!</Text>
+      <Text style={styles.emptyTitle}>{i18n.t('discover.allCaughtUp')}</Text>
       <Text style={styles.emptyText}>
-        No more events to show{filters.isCustomLocation ? ` in ${filters.location?.city}` : ' near you'}.{'\n'}Check back later or adjust your filters.
+        {i18n.t('discover.noMoreEvents')}{filters.isCustomLocation ? ` ${i18n.t('discover.inLocation', { location: filters.location?.city })}` : ` ${i18n.t('discover.nearYou')}`}.{'\n'}{i18n.t('discover.checkBackLater')}
       </Text>
       <TouchableOpacity 
         style={styles.emptyButton} 
         onPress={() => setShowFilters(true)}
       >
-        <Text style={styles.emptyButtonText}>Adjust Filters</Text>
+        <Text style={styles.emptyButtonText}>{i18n.t('discover.adjustFilters')}</Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.emptyButton, styles.refreshButton]} 
         onPress={() => loadEvents(filters)}
       >
-        <Text style={styles.emptyButtonText}>Refresh Events</Text>
+        <Text style={styles.emptyButtonText}>{i18n.t('discover.refreshEvents')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -218,7 +216,7 @@ export default function HomeScreen() {
     <View style={styles.loadingState}>
       <ActivityIndicator size="large" color="#4ECDC4" />
       <Text style={styles.loadingText}>
-        Finding events{filters.isCustomLocation ? ` in ${filters.location?.city}` : ' near you'}...
+        {i18n.t('discover.findingEvents')}{filters.isCustomLocation ? ` ${i18n.t('discover.inLocation', { location: filters.location?.city })}` : ` ${i18n.t('discover.nearYou')}`}...
       </Text>
     </View>
   );
@@ -227,19 +225,19 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButton} />
-        <Text style={styles.headerTitle}>EventSwipe</Text>
+        <Text style={styles.headerTitle}>{i18n.t('discover.title')}</Text>
         <TouchableOpacity 
           onPress={() => setShowFilters(true)} 
           style={styles.headerButton}
         >
-          <Text style={styles.filterText}>Filters</Text>
+          <Text style={styles.filterText}>{i18n.t('discover.filters')}</Text>
         </TouchableOpacity>
       </View>
 
       {filters.location && (
         <View style={[styles.locationBar, filters.isCustomLocation && styles.customLocationBar]}>
           <Text style={styles.locationBarText}>
-            {filters.isCustomLocation && '📍 '}{filters.location.city}{filters.location.region ? `, ${filters.location.region}` : ''} • {filters.distance} mi • {filters.timeRange}
+            {filters.isCustomLocation && '📍 '}{filters.location.city}{filters.location.region ? `, ${filters.location.region}` : ''} • {filters.distance} {i18n.t('filters.miles')} • {filters.timeRange}
           </Text>
         </View>
       )}

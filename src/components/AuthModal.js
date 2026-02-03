@@ -13,6 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import i18n from '../i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -240,19 +241,19 @@ export default function AuthModal() {
     setError('');
     
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError(i18n.t('auth.fillAllFields'));
       triggerShake();
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(i18n.t('auth.passwordMismatch'));
       triggerShake();
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(i18n.t('auth.weakPassword'));
       triggerShake();
       return;
     }
@@ -272,7 +273,7 @@ export default function AuthModal() {
         triggerShake();
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong');
+      setError(err.message || i18n.t('errors.generic'));
       triggerShake();
     }
     
@@ -348,7 +349,7 @@ export default function AuthModal() {
             ]}
           >
             <Text style={styles.logo}>EventSwipe</Text>
-            <Text style={styles.tagline}>Discover events near you</Text>
+            <Text style={styles.tagline}>{i18n.t('auth.tagline')}</Text>
             
             {/* Swipe hint cards */}
             <View style={styles.swipeHint}>
@@ -371,9 +372,9 @@ export default function AuthModal() {
               },
             ]}
           >
-            <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
+            <Text style={styles.title}>{isLogin ? i18n.t('auth.welcomeBack') : i18n.t('auth.createAccount')}</Text>
             <Text style={styles.subtitle}>
-              {isLogin ? 'Ready to find your next adventure?' : 'Join the fun today!'}
+              {isLogin ? i18n.t('auth.readyForAdventure') : i18n.t('auth.joinTheFun')}
             </Text>
 
             <View
@@ -385,7 +386,7 @@ export default function AuthModal() {
               <Text style={styles.inputIcon}>✉️</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder={i18n.t('auth.email')}
                 placeholderTextColor="#999"
                 value={email}
                 onChangeText={setEmail}
@@ -405,7 +406,7 @@ export default function AuthModal() {
               <Text style={styles.inputIcon}>🔒</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Password"
+                placeholder={i18n.t('auth.password')}
                 placeholderTextColor="#999"
                 value={password}
                 onChangeText={setPassword}
@@ -425,7 +426,7 @@ export default function AuthModal() {
                 <Text style={styles.inputIcon}>🔐</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Confirm Password"
+                  placeholder={i18n.t('auth.confirmPassword')}
                   placeholderTextColor="#999"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -460,7 +461,7 @@ export default function AuthModal() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.buttonText}>
-                    {isLogin ? "Let's Go! 🎉" : 'Join the Party! 🎊'}
+                    {isLogin ? i18n.t('auth.letsGo') : i18n.t('auth.joinTheParty')}
                   </Text>
                 )}
               </Animated.View>
@@ -469,29 +470,29 @@ export default function AuthModal() {
             <TouchableOpacity onPress={toggleMode} style={styles.toggleButton}>
               <Text style={styles.toggleText}>
                 {isLogin 
-                  ? "Don't have an account? " 
-                  : "Already have an account? "}
+                  ? `${i18n.t('auth.noAccount')} ` 
+                  : `${i18n.t('auth.haveAccount')} `}
                 <Text style={styles.toggleTextBold}>
-                  {isLogin ? 'Sign Up' : 'Sign In'}
+                  {isLogin ? i18n.t('auth.signUp') : i18n.t('auth.signIn')}
                 </Text>
               </Text>
             </TouchableOpacity>
 
             <View style={styles.legalContainer}>
               <Text style={styles.legalText}>
-                By continuing, you agree to our{' '}
+                {i18n.t('auth.byContinuing')}{' '}
                 <Text 
                   style={styles.legalLink} 
                   onPress={() => Linking.openURL('https://eventswipeapp.com/#terms')}
                 >
-                  Terms of Service
+                  {i18n.t('auth.termsOfService')}
                 </Text>
-                {' '}and{' '}
+                {' '}{i18n.t('auth.and')}{' '}
                 <Text 
                   style={styles.legalLink} 
                   onPress={() => Linking.openURL('https://eventswipeapp.com/#privacy')}
                 >
-                  Privacy Policy
+                  {i18n.t('auth.privacyPolicy')}
                 </Text>
               </Text>
             </View>

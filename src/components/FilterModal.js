@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,28 +13,31 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
+import i18n from '../i18n';
 
+// Categories with i18n keys
 const CATEGORIES = [
-  { id: 'music', label: 'Music', emoji: '🎵' },
-  { id: 'food', label: 'Food & Drink', emoji: '🍔' },
-  { id: 'sports', label: 'Sports', emoji: '⚽' },
-  { id: 'arts', label: 'Arts & Culture', emoji: '🎨' },
-  { id: 'nightlife', label: 'Nightlife', emoji: '🌙' },
-  { id: 'fitness', label: 'Fitness', emoji: '💪' },
-  { id: 'comedy', label: 'Comedy', emoji: '😂' },
-  { id: 'networking', label: 'Networking', emoji: '🤝' },
-  { id: 'family', label: 'Family', emoji: '👨‍👩‍👧‍👦' },
-  { id: 'outdoor', label: 'Outdoor', emoji: '🏕️' },
+  { id: 'music', labelKey: 'categories.music', emoji: '🎵' },
+  { id: 'food', labelKey: 'categories.food', emoji: '🍔' },
+  { id: 'sports', labelKey: 'categories.sports', emoji: '⚽' },
+  { id: 'arts', labelKey: 'categories.arts', emoji: '🎨' },
+  { id: 'nightlife', labelKey: 'categories.nightlife', emoji: '🌙' },
+  { id: 'fitness', labelKey: 'categories.fitness', emoji: '💪' },
+  { id: 'comedy', labelKey: 'categories.comedy', emoji: '😂' },
+  { id: 'networking', labelKey: 'categories.networking', emoji: '🤝' },
+  { id: 'family', labelKey: 'categories.family', emoji: '👨‍👩‍👧‍👦' },
+  { id: 'outdoor', labelKey: 'categories.outdoor', emoji: '🏕️' },
 ];
 
+// Time ranges with i18n keys
 const TIME_RANGES = [
-  { id: 'today', label: 'Today' },
-  { id: 'tomorrow', label: 'Tomorrow' },
-  { id: 'week', label: 'This Week' },
-  { id: 'weekend', label: 'This Weekend' },
-  { id: 'month', label: 'This Month' },
-  { id: '3months', label: 'Next 3 Months' },
-  { id: 'year', label: 'Next Year' },
+  { id: 'today', labelKey: 'filters.today' },
+  { id: 'tomorrow', labelKey: 'filters.tomorrow' },
+  { id: 'week', labelKey: 'filters.thisWeek' },
+  { id: 'weekend', labelKey: 'filters.thisWeekend' },
+  { id: 'month', labelKey: 'filters.thisMonth' },
+  { id: '3months', labelKey: 'filters.threeMonths' },
+  { id: 'year', labelKey: 'filters.thisYear' },
 ];
 
 export default function FilterModal({ visible, onClose, filters, onApply }) {
@@ -47,7 +50,6 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   const [locationError, setLocationError] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   
-  // Location search state
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -60,7 +62,6 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
     }
   }, [visible]);
 
-  // Debounced search
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
@@ -91,12 +92,10 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
       });
       const data = await response.json();
       
-      // Filter and format results - prefer cities, towns, and notable places
       const formattedResults = data
         .filter(item => {
           const type = item.type;
           const placeClass = item.class;
-          // Include cities, towns, villages, administrative areas, and notable places
           return placeClass === 'place' || 
                  placeClass === 'boundary' || 
                  type === 'city' || 
@@ -121,7 +120,6 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           }
         }));
       
-      // If no filtered results, show all results
       if (formattedResults.length === 0 && data.length > 0) {
         const allResults = data.map(item => ({
           id: item.place_id,
@@ -167,16 +165,14 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
-        setLocationError('Location permission denied');
+        setLocationError(i18n.t('errors.locationDenied') || 'Location permission denied');
         setLoadingLocation(false);
         return;
       }
 
       const currentLocation = await Location.getCurrentPositionAsync({});
       
-      // Use OpenStreetMap Nominatim for reverse geocoding (free, no API key needed)
       try {
-        // Use CORS proxy for web
         const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLocation.coords.latitude}&lon=${currentLocation.coords.longitude}`;
         const url = Platform.OS === 'web' 
           ? `https://corsproxy.io/?${encodeURIComponent(nominatimUrl)}`
@@ -188,8 +184,6 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           }
         });
         const data = await response.json();
-        
-        console.log('Nominatim result:', data);
         
         const cityName = data.address?.city || 
                          data.address?.town || 
@@ -216,7 +210,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
         setIsCustomLocation(false);
       }
     } catch (error) {
-      setLocationError('Could not get location');
+      setLocationError(i18n.t('errors.locationFailed') || 'Could not get location');
     }
     
     setLoadingLocation(false);
@@ -277,11 +271,11 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.headerButton}>Cancel</Text>
+              <Text style={styles.headerButton}>{i18n.t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Filters</Text>
+            <Text style={styles.headerTitle}>{i18n.t('filters.title')}</Text>
             <TouchableOpacity onPress={handleReset}>
-              <Text style={styles.headerButton}>Reset</Text>
+              <Text style={styles.headerButton}>{i18n.t('filters.reset')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -292,19 +286,18 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           >
             {/* Location Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📍 Location</Text>
+              <Text style={styles.sectionTitle}>📍 {i18n.t('filters.location')}</Text>
               
               {!showLocationSearch ? (
-                // Current location display
                 <View style={styles.locationDisplay}>
                   {loadingLocation ? (
                     <View style={styles.locationLoading}>
                       <ActivityIndicator size="small" color="#4ECDC4" />
-                      <Text style={styles.locationLoadingText}>Getting your location...</Text>
+                      <Text style={styles.locationLoadingText}>{i18n.t('common.loading')}</Text>
                     </View>
                   ) : locationError ? (
                     <TouchableOpacity onPress={requestLocation}>
-                      <Text style={styles.locationError}>{locationError} - Tap to retry</Text>
+                      <Text style={styles.locationError}>{locationError} - {i18n.t('common.retry')}</Text>
                     </TouchableOpacity>
                   ) : location ? (
                     <View style={styles.locationInfo}>
@@ -323,24 +316,18 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                         <Text style={styles.changeLocationText}>Change</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : (
-                    <TouchableOpacity onPress={requestLocation}>
-                      <Text style={styles.locationButton}>Enable Location</Text>
-                    </TouchableOpacity>
-                  )}
+                  ) : null}
                 </View>
               ) : (
-                // Location search interface
                 <View style={styles.locationSearch}>
                   <View style={styles.searchInputContainer}>
                     <TextInput
                       style={styles.searchInput}
-                      placeholder="Search city or location..."
+                      placeholder={i18n.t('filters.searchLocation')}
                       placeholderTextColor="#999"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
-                      autoFocus={true}
-                      returnKeyType="search"
+                      autoFocus
                     />
                     {searchQuery.length > 0 && (
                       <TouchableOpacity 
@@ -351,42 +338,37 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                       </TouchableOpacity>
                     )}
                   </View>
-                  
-                  {/* Use My Location option */}
+
                   <TouchableOpacity 
                     style={styles.useMyLocationButton}
                     onPress={useMyLocation}
                   >
                     <Text style={styles.useMyLocationIcon}>📍</Text>
-                    <Text style={styles.useMyLocationText}>Use My Current Location</Text>
+                    <Text style={styles.useMyLocationText}>{i18n.t('filters.useCurrentLocation')}</Text>
                   </TouchableOpacity>
-                  
-                  {/* Search results */}
+
                   {searching ? (
                     <View style={styles.searchingContainer}>
                       <ActivityIndicator size="small" color="#4ECDC4" />
-                      <Text style={styles.searchingText}>Searching...</Text>
+                      <Text style={styles.searchingText}>{i18n.t('common.loading')}</Text>
                     </View>
                   ) : searchResults.length > 0 ? (
                     <View style={styles.searchResults}>
-                      {searchResults.map((result) => (
-                        <TouchableOpacity
-                          key={result.id}
+                      {searchResults.map(result => (
+                        <TouchableOpacity 
+                          key={result.id} 
                           style={styles.searchResultItem}
                           onPress={() => selectSearchResult(result)}
                         >
                           <Text style={styles.searchResultName}>{result.name}</Text>
-                          <Text style={styles.searchResultRegion}>
-                            {result.region}{result.country && result.region ? ', ' : ''}{result.country}
-                          </Text>
+                          <Text style={styles.searchResultRegion}>{result.region}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   ) : searchQuery.length >= 2 ? (
                     <Text style={styles.noResultsText}>No locations found</Text>
                   ) : null}
-                  
-                  {/* Cancel search button */}
+
                   <TouchableOpacity 
                     style={styles.cancelSearchButton}
                     onPress={() => {
@@ -395,7 +377,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                       setSearchResults([]);
                     }}
                   >
-                    <Text style={styles.cancelSearchText}>Cancel</Text>
+                    <Text style={styles.cancelSearchText}>{i18n.t('common.cancel')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -404,14 +386,14 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
             {/* Distance Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>📏 Distance</Text>
-                <Text style={styles.distanceValue}>{distance} miles</Text>
+                <Text style={styles.sectionTitle}>📏 {i18n.t('filters.distance')}</Text>
+                <Text style={styles.distanceValue}>{distance} {i18n.t('filters.miles')}</Text>
               </View>
               <Slider
                 style={styles.slider}
-                minimumValue={5}
+                minimumValue={1}
                 maximumValue={100}
-                step={5}
+                step={1}
                 value={distance}
                 onValueChange={setDistance}
                 minimumTrackTintColor="#4ECDC4"
@@ -419,14 +401,14 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                 thumbTintColor="#4ECDC4"
               />
               <View style={styles.sliderLabels}>
-                <Text style={styles.sliderLabel}>5 mi</Text>
+                <Text style={styles.sliderLabel}>1 mi</Text>
                 <Text style={styles.sliderLabel}>100 mi</Text>
               </View>
             </View>
 
             {/* Time Range Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📅 When</Text>
+              <Text style={styles.sectionTitle}>🗓️ {i18n.t('filters.timeRange')}</Text>
               <View style={styles.timeGrid}>
                 {TIME_RANGES.map(range => (
                   <TouchableOpacity
@@ -437,13 +419,11 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                     ]}
                     onPress={() => setTimeRange(range.id)}
                   >
-                    <Text
-                      style={[
-                        styles.timeChipText,
-                        timeRange === range.id && styles.timeChipTextSelected,
-                      ]}
-                    >
-                      {range.label}
+                    <Text style={[
+                      styles.timeChipText,
+                      timeRange === range.id && styles.timeChipTextSelected,
+                    ]}>
+                      {i18n.t(range.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -453,7 +433,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
             {/* Categories Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>🎯 Categories</Text>
+                <Text style={styles.sectionTitle}>🎯 {i18n.t('filters.categories')}</Text>
                 <View style={styles.categoryActions}>
                   <TouchableOpacity onPress={selectAllCategories}>
                     <Text style={styles.categoryAction}>All</Text>
@@ -475,13 +455,11 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                     onPress={() => toggleCategory(category.id)}
                   >
                     <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        selectedCategories.includes(category.id) && styles.categoryChipTextSelected,
-                      ]}
-                    >
-                      {category.label}
+                    <Text style={[
+                      styles.categoryChipText,
+                      selectedCategories.includes(category.id) && styles.categoryChipTextSelected,
+                    ]}>
+                      {i18n.t(category.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -492,7 +470,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
           <View style={styles.footer}>
             <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
               <Text style={styles.applyButtonText}>
-                Apply Filters
+                {i18n.t('filters.apply')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -550,7 +528,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  // Location styles
   locationDisplay: {
     marginTop: -4,
   },
@@ -570,11 +547,6 @@ const styles = StyleSheet.create({
   locationError: {
     fontSize: 16,
     color: '#FF6B6B',
-  },
-  locationButton: {
-    fontSize: 16,
-    color: '#4ECDC4',
-    fontWeight: '600',
   },
   locationInfo: {
     flexDirection: 'row',
@@ -608,7 +580,6 @@ const styles = StyleSheet.create({
     color: '#4ECDC4',
     fontWeight: '600',
   },
-  // Location search styles
   locationSearch: {
     marginTop: -4,
   },
@@ -696,7 +667,6 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '500',
   },
-  // Other styles
   distanceValue: {
     fontSize: 16,
     fontWeight: '600',

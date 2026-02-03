@@ -48,7 +48,8 @@
           "locationWhenInUsePermission": "EventSwipe uses your location to find events near you."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-localization"
     ],
     "extra": {
       "eas": {

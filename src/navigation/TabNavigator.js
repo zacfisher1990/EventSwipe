@@ -8,6 +8,7 @@ import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PostEventScreen from '../screens/PostEventScreen';
 import ActivityScreen from '../screens/ActivityScreen';
+import i18n from '../i18n';
 
 const Tab = createBottomTabNavigator();
 
@@ -47,6 +48,7 @@ export default function TabNavigator() {
         name="Discover"
         component={HomeScreen}
         options={{
+          tabBarLabel: i18n.t('tabs.discover'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? 'compass' : 'compass-outline'}
@@ -60,6 +62,7 @@ export default function TabNavigator() {
         name="Saved"
         component={SavedScreen}
         options={{
+          tabBarLabel: i18n.t('tabs.saved'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? 'heart' : 'heart-outline'}
@@ -84,6 +87,7 @@ export default function TabNavigator() {
         name="Activity"
         component={ActivityScreen}
         options={{
+            tabBarLabel: i18n.t('tabs.activity'),
             tabBarIcon: ({ focused, color }) => (
             <Ionicons
                 name={focused ? 'notifications' : 'notifications-outline'}
@@ -97,6 +101,7 @@ export default function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
+          tabBarLabel: i18n.t('tabs.profile'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}

@@ -7,15 +7,12 @@ import {
   Dimensions,
   Text,
 } from 'react-native';
+import i18n from '../i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_OUT_DURATION = 200;
 
-/**
- * CardSwiper - A polished swiper using only React Native's built-in Animated API
- * No react-native-reanimated or react-native-gesture-handler required
- */
 const CardSwiper = forwardRef(function CardSwiper({
   cards = [],
   renderCard,
@@ -30,12 +27,10 @@ const CardSwiper = forwardRef(function CardSwiper({
   const swipeInProgress = useRef(false);
   const tapStart = useRef({ x: 0, y: 0, time: 0 });
 
-  // Refs to access current values inside panResponder (avoids stale closures)
   const currentIndexRef = useRef(currentIndex);
   const cardsRef = useRef(cards);
   const onCardTapRef = useRef(onCardTap);
   
-  // Keep refs updated
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
@@ -48,7 +43,6 @@ const CardSwiper = forwardRef(function CardSwiper({
     onCardTapRef.current = onCardTap;
   }, [onCardTap]);
 
-  // Reset position when currentIndex changes
   useEffect(() => {
     position.setValue({ x: 0, y: 0 });
   }, [currentIndex]);
@@ -76,7 +70,6 @@ const CardSwiper = forwardRef(function CardSwiper({
       const item = cardsRef.current[currentIndexRef.current];
       const index = currentIndexRef.current;
       
-      // Update index FIRST (this triggers useEffect to reset position)
       setCurrentIndex(prev => {
         const next = prev + 1;
         if (next >= cardsRef.current.length) {
@@ -85,21 +78,18 @@ const CardSwiper = forwardRef(function CardSwiper({
         return next;
       });
 
-      // Call the swipe callback
       if (direction === 'left') {
         onSwipedLeft?.(index, item);
       } else {
         onSwipedRight?.(index, item);
       }
 
-      // Small delay before allowing next swipe
       setTimeout(() => {
         swipeInProgress.current = false;
       }, 50);
     });
   }, [onSwipedLeft, onSwipedRight, onSwipedAll, position]);
 
-  // Store function refs for panResponder
   const swipeOffScreenRef = useRef(swipeOffScreen);
   const resetPositionRef = useRef(resetPosition);
   
@@ -111,7 +101,6 @@ const CardSwiper = forwardRef(function CardSwiper({
     resetPositionRef.current = resetPosition;
   }, [resetPosition]);
 
-  // Expose swipeLeft and swipeRight methods via ref
   useImperativeHandle(ref, () => ({
     swipeLeft: () => swipeOffScreenRef.current('left'),
     swipeRight: () => swipeOffScreenRef.current('right'),
@@ -144,7 +133,6 @@ const CardSwiper = forwardRef(function CardSwiper({
         const dy = evt.nativeEvent.pageY - tapStart.current.y;
         const duration = Date.now() - tapStart.current.time;
         
-        // Check if it was a tap - use refs to get current values
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && duration < 200) {
           const currentCard = cardsRef.current[currentIndexRef.current];
           onCardTapRef.current?.(currentCard);
@@ -152,7 +140,6 @@ const CardSwiper = forwardRef(function CardSwiper({
           return;
         }
 
-        // Check for swipe
         if (gesture.dx > SWIPE_THRESHOLD || gesture.vx > 0.5) {
           swipeOffScreenRef.current('right');
         } else if (gesture.dx < -SWIPE_THRESHOLD || gesture.vx < -0.5) {
@@ -164,42 +151,36 @@ const CardSwiper = forwardRef(function CardSwiper({
     })
   ).current;
 
-  // Rotation based on swipe position
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ['-12deg', '0deg', '12deg'],
     extrapolate: 'clamp',
   });
 
-  // Opacity for NOPE label
   const nopeOpacity = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH * 0.3, -SCREEN_WIDTH * 0.1, 0],
     outputRange: [1, 0.5, 0],
     extrapolate: 'clamp',
   });
 
-  // Opacity for LIKE label
   const likeOpacity = position.x.interpolate({
     inputRange: [0, SCREEN_WIDTH * 0.1, SCREEN_WIDTH * 0.3],
     outputRange: [0, 0.5, 1],
     extrapolate: 'clamp',
   });
 
-  // Scale for the next card
   const nextCardScale = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [1, 0.95, 1],
     extrapolate: 'clamp',
   });
 
-  // Translate Y for next card
   const nextCardTranslateY = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [0, 10, 0],
     extrapolate: 'clamp',
   });
 
-  // Third card animations
   const thirdCardScale = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [0.95, 0.9, 0.95],
@@ -219,14 +200,12 @@ const CardSwiper = forwardRef(function CardSwiper({
 
     const cardElements = [];
 
-    // Render up to 3 cards (in reverse order so first is on top)
     for (let i = Math.min(2, cards.length - currentIndex - 1); i >= 0; i--) {
       const actualIndex = currentIndex + i;
       const item = cards[actualIndex];
       
       if (!item) continue;
 
-      // Third card (bottom of stack)
       if (i === 2) {
         cardElements.push(
           <Animated.View
@@ -246,7 +225,6 @@ const CardSwiper = forwardRef(function CardSwiper({
           </Animated.View>
         );
       }
-      // Second card (middle)
       else if (i === 1) {
         cardElements.push(
           <Animated.View
@@ -266,7 +244,6 @@ const CardSwiper = forwardRef(function CardSwiper({
           </Animated.View>
         );
       }
-      // Top card (draggable)
       else if (i === 0) {
         cardElements.push(
           <Animated.View
@@ -286,20 +263,18 @@ const CardSwiper = forwardRef(function CardSwiper({
           >
             {renderCard(item, actualIndex)}
             
-            {/* NOPE overlay - only show while dragging */}
             {isDragging && (
               <Animated.View style={[styles.overlay, styles.overlayLeft, { opacity: nopeOpacity }]}>
                 <View style={[styles.labelBox, styles.nopeBox]}>
-                  <Text style={styles.labelText}>NOPE</Text>
+                  <Text style={styles.labelText}>{i18n.t('swipe.nope')}</Text>
                 </View>
               </Animated.View>
             )}
             
-            {/* SAVE overlay - only show while dragging */}
             {isDragging && (
               <Animated.View style={[styles.overlay, styles.overlayRight, { opacity: likeOpacity }]}>
                 <View style={[styles.labelBox, styles.likeBox]}>
-                  <Text style={styles.labelText}>SAVE</Text>
+                  <Text style={styles.labelText}>{i18n.t('swipe.save')}</Text>
                 </View>
               </Animated.View>
             )}
