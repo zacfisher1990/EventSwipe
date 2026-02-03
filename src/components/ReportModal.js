@@ -10,13 +10,15 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../i18n';
 
-const REPORT_REASONS = [
-  { id: 'spam', label: 'Spam or scam', icon: 'alert-circle' },
-  { id: 'inappropriate', label: 'Inappropriate content', icon: 'warning' },
-  { id: 'fake', label: 'Fake or misleading event', icon: 'eye-off' },
-  { id: 'duplicate', label: 'Duplicate posting', icon: 'copy' },
-  { id: 'other', label: 'Other', icon: 'ellipsis-horizontal' },
+// Report reasons - function to get localized labels
+const getReportReasons = () => [
+  { id: 'spam', label: i18n.t('report.spam'), icon: 'alert-circle' },
+  { id: 'inappropriate', label: i18n.t('report.inappropriate'), icon: 'warning' },
+  { id: 'fake', label: i18n.t('report.fake'), icon: 'eye-off' },
+  { id: 'duplicate', label: i18n.t('report.duplicate'), icon: 'copy' },
+  { id: 'other', label: i18n.t('report.other'), icon: 'ellipsis-horizontal' },
 ];
 
 export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
@@ -68,12 +70,12 @@ export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) 
               <View style={styles.successIcon}>
                 <Ionicons name="checkmark-circle" size={64} color="#4ECDC4" />
               </View>
-              <Text style={styles.successTitle}>Thanks for letting us know</Text>
+              <Text style={styles.successTitle}>{i18n.t('report.thankYou')}</Text>
               <Text style={styles.successText}>
-                We'll review this event and take action if it violates our guidelines.
+                {i18n.t('report.thankYouText')}
               </Text>
               <TouchableOpacity style={styles.doneButton} onPress={handleClose}>
-                <Text style={styles.doneButtonText}>Done</Text>
+                <Text style={styles.doneButtonText}>{i18n.t('common.done')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -96,7 +98,7 @@ export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) 
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Report Event</Text>
+            <Text style={styles.headerTitle}>{i18n.t('report.title')}</Text>
             <View style={styles.closeButton} /> {/* Spacer for centering */}
           </View>
 
@@ -109,10 +111,10 @@ export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) 
           </View>
 
           {/* Reason selection */}
-          <Text style={styles.sectionTitle}>Why are you reporting this event?</Text>
+          <Text style={styles.sectionTitle}>{i18n.t('report.whyReporting')}</Text>
           
           <View style={styles.reasonsList}>
-            {REPORT_REASONS.map((reason) => (
+            {getReportReasons().map((reason) => (
               <TouchableOpacity
                 key={reason.id}
                 style={[
@@ -153,7 +155,7 @@ export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) 
             <View style={styles.otherInputContainer}>
               <TextInput
                 style={styles.otherInput}
-                placeholder="Please describe the issue..."
+                placeholder={i18n.t('report.otherPlaceholder')}
                 placeholderTextColor="#999"
                 multiline
                 numberOfLines={3}
@@ -182,13 +184,13 @@ export default function ReportModal({ visible, onClose, onSubmit, eventTitle }) 
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit Report</Text>
+              <Text style={styles.submitButtonText}>{i18n.t('report.submitReport')}</Text>
             )}
           </TouchableOpacity>
 
           {/* Disclaimer */}
           <Text style={styles.disclaimer}>
-            False reports may result in restrictions on your account.
+            {i18n.t('report.disclaimer')}
           </Text>
         </View>
       </View>

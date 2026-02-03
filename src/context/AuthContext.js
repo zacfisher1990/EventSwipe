@@ -7,6 +7,23 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import i18n from '../i18n';
+
+// Map Firebase error codes to translated messages
+const getAuthErrorMessage = (error) => {
+  const errorCode = error.code || '';
+  const errorMap = {
+    'auth/wrong-password': i18n.t('errors.wrongPassword'),
+    'auth/invalid-credential': i18n.t('errors.wrongPassword'),
+    'auth/user-not-found': i18n.t('errors.userNotFound'),
+    'auth/email-already-in-use': i18n.t('errors.emailInUse'),
+    'auth/invalid-email': i18n.t('errors.invalidEmail'),
+    'auth/weak-password': i18n.t('errors.weakPassword'),
+    'auth/too-many-requests': i18n.t('errors.tooManyRequests'),
+    'auth/network-request-failed': i18n.t('errors.networkFailed'),
+  };
+  return errorMap[errorCode] || i18n.t('errors.generic');
+};
 
 const AuthContext = createContext({});
 
@@ -38,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: getAuthErrorMessage(error) };
     }
   };
 
@@ -55,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: getAuthErrorMessage(error) };
     }
   };
 

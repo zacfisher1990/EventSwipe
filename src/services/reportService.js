@@ -11,6 +11,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import i18n from '../i18n';
 
 /**
  * Submit a report for an event
@@ -26,7 +27,7 @@ export const submitReport = async (eventId, reporterId, reason, details = null, 
     // Check if user already reported this event
     const existingReport = await checkExistingReport(eventId, reporterId);
     if (existingReport) {
-      throw new Error('You have already reported this event');
+      throw new Error(i18n.t('report.alreadyReported'));
     }
 
     // Create the report document with event info for easy review

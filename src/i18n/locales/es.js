@@ -110,6 +110,7 @@ export default {
     eventPostedText: 'Tu evento ha sido publicado exitosamente y ahora está disponible para que otros lo descubran.',
     viewEvents: 'Ver Eventos',
     postAnother: 'Publicar Otro Evento',
+    photoPermissionRequired: 'Por favor permite el acceso a tus fotos para agregar una imagen del evento.',
   },
 
   // Categories
@@ -124,6 +125,7 @@ export default {
     networking: 'Networking',
     family: 'Familia',
     outdoor: 'Al Aire Libre',
+    event: 'Evento',
   },
 
   // Profile Screen
@@ -145,6 +147,7 @@ export default {
     deleteConfirm: '¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer. Todos tus datos serán eliminados permanentemente.',
     deleteAccountFailed: 'Error al eliminar la cuenta. Por favor intenta de nuevo.',
     reAuthRequired: 'Por seguridad, cierra sesión y vuelve a iniciar sesión, luego intenta eliminar tu cuenta de nuevo.',
+    reAuthRequiredTitle: 'Re-autenticación Requerida',
     signOutConfirm: '¿Estás seguro de que quieres cerrar sesión?',
     version: 'EventSwipe v1.0.0',
   },
@@ -157,6 +160,9 @@ export default {
     reportEvent: 'Reportar Evento',
     deleteEvent: 'Eliminar Evento',
     deleteConfirm: '¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.',
+    seeTickets: 'Ver entradas',
+    untitledEvent: 'Evento Sin Título',
+    venueTBA: 'Lugar por confirmar',
   },
 
   // Report Modal
@@ -242,5 +248,15 @@ export default {
     network: 'Error de conexión. Por favor verifica tu conexión.',
     notFound: 'No encontrado.',
     unauthorized: 'Por favor inicia sesión para continuar.',
+    eventNotFound: 'Evento no encontrado.',
+    cannotDeleteOthers: 'Solo puedes eliminar tus propios eventos.',
+    // Firebase auth errors
+    wrongPassword: 'Contraseña incorrecta. Por favor intenta de nuevo.',
+    userNotFound: 'No se encontró una cuenta con este correo.',
+    emailInUse: 'Ya existe una cuenta con este correo electrónico.',
+    invalidEmail: 'Por favor ingresa un correo electrónico válido.',
+    weakPassword: 'La contraseña debe tener al menos 6 caracteres.',
+    tooManyRequests: 'Demasiados intentos. Por favor intenta más tarde.',
+    networkFailed: 'Error de conexión. Por favor verifica tu conexión.',
   },
 };

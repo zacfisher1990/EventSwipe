@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { createEvent } from '../services/eventService';
+import i18n from '../i18n';
 
 // Geocode address to get coordinates using Nominatim
 const geocodeAddress = async (addressString) => {
@@ -44,17 +45,18 @@ const geocodeAddress = async (addressString) => {
   }
 };
 
-const CATEGORIES = [
-  { id: 'music', label: 'Music', emoji: '🎵' },
-  { id: 'food', label: 'Food & Drink', emoji: '🍔' },
-  { id: 'sports', label: 'Sports', emoji: '⚽' },
-  { id: 'arts', label: 'Arts & Culture', emoji: '🎨' },
-  { id: 'nightlife', label: 'Nightlife', emoji: '🌙' },
-  { id: 'fitness', label: 'Fitness', emoji: '💪' },
-  { id: 'comedy', label: 'Comedy', emoji: '😂' },
-  { id: 'networking', label: 'Networking', emoji: '🤝' },
-  { id: 'family', label: 'Family', emoji: '👨‍👩‍👧‍👦' },
-  { id: 'outdoor', label: 'Outdoor', emoji: '🏕️' },
+// Categories - function to get localized labels
+const getCategories = () => [
+  { id: 'music', label: i18n.t('categories.music'), emoji: '🎵' },
+  { id: 'food', label: i18n.t('categories.food'), emoji: '🍔' },
+  { id: 'sports', label: i18n.t('categories.sports'), emoji: '⚽' },
+  { id: 'arts', label: i18n.t('categories.arts'), emoji: '🎨' },
+  { id: 'nightlife', label: i18n.t('categories.nightlife'), emoji: '🌙' },
+  { id: 'fitness', label: i18n.t('categories.fitness'), emoji: '💪' },
+  { id: 'comedy', label: i18n.t('categories.comedy'), emoji: '😂' },
+  { id: 'networking', label: i18n.t('categories.networking'), emoji: '🤝' },
+  { id: 'family', label: i18n.t('categories.family'), emoji: '👨‍👩‍👧‍👦' },
+  { id: 'outdoor', label: i18n.t('categories.outdoor'), emoji: '🏕️' },
 ];
 
 export default function PostEventScreen({ navigation }) {
@@ -135,7 +137,7 @@ export default function PostEventScreen({ navigation }) {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
-      setError('Please allow access to your photos to add an event image.');
+      setError(i18n.t('postEvent.photoPermissionRequired'));
       return;
     }
 
@@ -171,13 +173,13 @@ export default function PostEventScreen({ navigation }) {
   setError('');
   
   if (!title || !dateSelected || !timeSelected || !location || !category) {
-    setError('Please fill in all required fields.');
+    setError(i18n.t('postEvent.fillRequired'));
     return;
   }
 
   // Require address for geocoding
   if (!address) {
-    setError('Please enter an address so your event can be found by nearby users.');
+    setError(i18n.t('postEvent.addressRequired'));
     return;
   }
 
@@ -188,7 +190,7 @@ export default function PostEventScreen({ navigation }) {
   
   if (!coords) {
     setLoading(false);
-    setError('Could not find that address. Please check it and try again, or add more details (city, country).');
+    setError(i18n.t('postEvent.addressNotFound'));
     return;
   }
 
@@ -201,7 +203,7 @@ export default function PostEventScreen({ navigation }) {
     address,
     category,
     ticketUrl,
-    price: price || 'Free',
+    price: price || i18n.t('common.free'),
     latitude: coords.latitude,
     longitude: coords.longitude,
     // Use placeholder if no image selected
@@ -216,7 +218,7 @@ export default function PostEventScreen({ navigation }) {
   if (result.success) {
     setSuccess(true);
   } else {
-    setError(result.error || 'Failed to post event. Please try again.');
+    setError(result.error || i18n.t('postEvent.postFailed'));
   }
 };
 
@@ -237,15 +239,15 @@ export default function PostEventScreen({ navigation }) {
       <View style={styles.successContainer}>
         <View style={styles.successContent}>
           <Text style={styles.successEmoji}>🎉</Text>
-          <Text style={styles.successTitle}>Event Posted!</Text>
+          <Text style={styles.successTitle}>{i18n.t('postEvent.eventPosted')}</Text>
           <Text style={styles.successText}>
-            Your event has been posted successfully and is now live for others to discover.
+            {i18n.t('postEvent.eventPostedText')}
           </Text>
           <TouchableOpacity style={styles.successButton} onPress={handleSuccessDone}>
-            <Text style={styles.successButtonText}>View Events</Text>
+            <Text style={styles.successButtonText}>{i18n.t('postEvent.viewEvents')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
-            <Text style={styles.secondaryButtonText}>Post Another Event</Text>
+            <Text style={styles.secondaryButtonText}>{i18n.t('postEvent.postAnother')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -258,7 +260,7 @@ export default function PostEventScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
           <Ionicons name="close" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post Event</Text>
+        <Text style={styles.headerTitle}>{i18n.t('postEvent.title')}</Text>
         <TouchableOpacity 
           onPress={handleSubmit} 
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -267,7 +269,7 @@ export default function PostEventScreen({ navigation }) {
           {loading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.submitText}>Post</Text>
+            <Text style={styles.submitText}>{i18n.t('postEvent.post')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -286,17 +288,17 @@ export default function PostEventScreen({ navigation }) {
           ) : (
             <View style={styles.imagePlaceholder}>
               <Ionicons name="camera-outline" size={40} color="#999" />
-              <Text style={styles.imagePlaceholderText}>Add Event Photo</Text>
+              <Text style={styles.imagePlaceholderText}>{i18n.t('postEvent.addEventPhoto')}</Text>
             </View>
           )}
         </TouchableOpacity>
 
         {/* Title */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Event Title *</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.eventTitle')} *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Give your event a name"
+            placeholder={i18n.t('postEvent.eventTitlePlaceholder')}
             placeholderTextColor="#999"
             value={title}
             onChangeText={setTitle}
@@ -305,10 +307,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Description */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.description')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Tell people what your event is about"
+            placeholder={i18n.t('postEvent.descriptionPlaceholder')}
             placeholderTextColor="#999"
             value={description}
             onChangeText={setDescription}
@@ -320,26 +322,26 @@ export default function PostEventScreen({ navigation }) {
         {/* Date and Time */}
         <View style={styles.row}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Date *</Text>
+            <Text style={styles.label}>{i18n.t('postEvent.date')} *</Text>
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => setShowDatePicker(true)}
             >
               <Ionicons name="calendar-outline" size={20} color="#666" />
               <Text style={[styles.pickerButtonText, !dateSelected && styles.placeholderText]}>
-                {dateSelected ? formatDateDisplay(eventDate) : 'Select date'}
+                {dateSelected ? formatDateDisplay(eventDate) : i18n.t('postEvent.selectDate')}
               </Text>
             </TouchableOpacity>
           </View>
           <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>Time *</Text>
+            <Text style={styles.label}>{i18n.t('postEvent.time')} *</Text>
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => setShowTimePicker(true)}
             >
               <Ionicons name="time-outline" size={20} color="#666" />
               <Text style={[styles.pickerButtonText, !timeSelected && styles.placeholderText]}>
-                {timeSelected ? formatTimeDisplay(eventTime) : 'Select time'}
+                {timeSelected ? formatTimeDisplay(eventTime) : i18n.t('postEvent.selectTime')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -353,13 +355,13 @@ export default function PostEventScreen({ navigation }) {
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>Cancel</Text>
+                      <Text style={styles.pickerModalCancel}>{i18n.t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
                       setDateSelected(true);
                       setShowDatePicker(false);
                     }}>
-                      <Text style={styles.pickerModalDone}>Done</Text>
+                      <Text style={styles.pickerModalDone}>{i18n.t('common.done')}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -391,13 +393,13 @@ export default function PostEventScreen({ navigation }) {
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>Cancel</Text>
+                      <Text style={styles.pickerModalCancel}>{i18n.t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
                       setTimeSelected(true);
                       setShowTimePicker(false);
                     }}>
-                      <Text style={styles.pickerModalDone}>Done</Text>
+                      <Text style={styles.pickerModalDone}>{i18n.t('common.done')}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -421,10 +423,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Location */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Venue Name *</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.venueName')} *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Where is it happening?"
+            placeholder={i18n.t('postEvent.venueNamePlaceholder')}
             placeholderTextColor="#999"
             value={location}
             onChangeText={setLocation}
@@ -433,10 +435,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Address */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Address *</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.address')} *</Text>
           <TextInput
             style={styles.input}
-            placeholder="123 Main St, City, State, Country"
+            placeholder={i18n.t('postEvent.addressPlaceholder')}
             placeholderTextColor="#999"
             value={address}
             onChangeText={setAddress}
@@ -445,9 +447,9 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Category */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Category *</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.category')} *</Text>
           <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => (
+            {getCategories().map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
@@ -472,10 +474,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Price */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Ticket Price</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.ticketPrice')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Free, $10, $25-50, etc."
+            placeholder={i18n.t('postEvent.ticketPricePlaceholder')}
             placeholderTextColor="#999"
             value={price}
             onChangeText={setPrice}
@@ -484,10 +486,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Ticket URL */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Ticket URL</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.ticketUrl')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="https://tickets.example.com"
+            placeholder={i18n.t('postEvent.ticketUrlPlaceholder')}
             placeholderTextColor="#999"
             value={ticketUrl}
             onChangeText={setTicketUrl}

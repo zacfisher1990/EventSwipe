@@ -17,17 +17,18 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 150;
 
-// Report reasons
-const REPORT_REASONS = [
-  { id: 'spam', label: 'Spam or scam', icon: 'alert-circle' },
-  { id: 'inappropriate', label: 'Inappropriate content', icon: 'warning' },
-  { id: 'fake', label: 'Fake or misleading event', icon: 'eye-off' },
-  { id: 'duplicate', label: 'Duplicate posting', icon: 'copy' },
-  { id: 'other', label: 'Other', icon: 'ellipsis-horizontal' },
+// Report reasons - function to get localized labels
+const getReportReasons = () => [
+  { id: 'spam', label: i18n.t('report.spam'), icon: 'alert-circle' },
+  { id: 'inappropriate', label: i18n.t('report.inappropriate'), icon: 'warning' },
+  { id: 'fake', label: i18n.t('report.fake'), icon: 'eye-off' },
+  { id: 'duplicate', label: i18n.t('report.duplicate'), icon: 'copy' },
+  { id: 'other', label: i18n.t('report.other'), icon: 'ellipsis-horizontal' },
 ];
 
 // Report Modal Component
@@ -53,9 +54,9 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
     } catch (error) {
       console.error('Error submitting report:', error);
       if (error.message === 'You have already reported this event') {
-        Alert.alert('Already Reported', 'You have already reported this event.');
+        Alert.alert(i18n.t('report.alreadyReported'), i18n.t('report.alreadyReported'));
       } else {
-        Alert.alert('Error', 'Failed to submit report. Please try again.');
+        Alert.alert(i18n.t('common.error'), i18n.t('report.reportFailed'));
       }
       setIsSubmitting(false);
       return;
@@ -80,12 +81,12 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
               <View style={reportStyles.successIcon}>
                 <Ionicons name="checkmark-circle" size={64} color="#4ECDC4" />
               </View>
-              <Text style={reportStyles.successTitle}>Thanks for letting us know</Text>
+              <Text style={reportStyles.successTitle}>{i18n.t('report.thankYou')}</Text>
               <Text style={reportStyles.successText}>
-                We'll review this event and take action if it violates our guidelines.
+                {i18n.t('report.thankYouText')}
               </Text>
               <TouchableOpacity style={reportStyles.doneButton} onPress={handleClose}>
-                <Text style={reportStyles.doneButtonText}>Done</Text>
+                <Text style={reportStyles.doneButtonText}>{i18n.t('common.done')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -103,7 +104,7 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
             <TouchableOpacity onPress={handleClose} style={reportStyles.headerButton}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
-            <Text style={reportStyles.headerTitle}>Report Event</Text>
+            <Text style={reportStyles.headerTitle}>{i18n.t('report.title')}</Text>
             <View style={reportStyles.headerButton} />
           </View>
 
@@ -114,10 +115,10 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
           </View>
 
           {/* Reason selection */}
-          <Text style={reportStyles.sectionTitle}>Why are you reporting this event?</Text>
+          <Text style={reportStyles.sectionTitle}>{i18n.t('report.whyReporting')}</Text>
           
           <ScrollView style={reportStyles.reasonsList} showsVerticalScrollIndicator={false}>
-            {REPORT_REASONS.map((reason) => (
+            {getReportReasons().map((reason) => (
               <TouchableOpacity
                 key={reason.id}
                 style={[
@@ -153,7 +154,7 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
               <View style={reportStyles.otherInputContainer}>
                 <TextInput
                   style={reportStyles.otherInput}
-                  placeholder="Please describe the issue..."
+                  placeholder={i18n.t('report.otherPlaceholder')}
                   placeholderTextColor="#999"
                   multiline
                   numberOfLines={3}
@@ -183,12 +184,12 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={reportStyles.submitButtonText}>Submit Report</Text>
+              <Text style={reportStyles.submitButtonText}>{i18n.t('report.submitReport')}</Text>
             )}
           </TouchableOpacity>
 
           <Text style={reportStyles.disclaimer}>
-            False reports may result in restrictions on your account.
+            {i18n.t('report.disclaimer')}
           </Text>
         </View>
       </View>
@@ -346,12 +347,12 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Event',
-      'Are you sure you want to delete this event? This action cannot be undone.',
+      i18n.t('eventDetails.deleteEvent'),
+      i18n.t('eventDetails.deleteConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: i18n.t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             setIsDeleting(true);
@@ -428,7 +429,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             </View>
             {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
               <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
-                <Text style={styles.priceText}>{event.ticketUrl ? 'See tickets' : 'Find tickets'}</Text>
+                <Text style={styles.priceText}>{event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -450,14 +451,14 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               {event.address && (
                 <Text style={styles.addressText}>{event.address}</Text>
               )}
-              <Text style={styles.directionsLink}>Get directions →</Text>
+              <Text style={styles.directionsLink}>{i18n.t('eventDetails.getDirections')} →</Text>
             </View>
           </TouchableOpacity>
 
           {/* Description */}
           {event.description && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.sectionTitle}>{i18n.t('eventDetails.about')}</Text>
               <Text style={styles.description}>{event.description}</Text>
             </View>
           )}
@@ -467,7 +468,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
               <Ionicons name="ticket-outline" size={24} color="#fff" />
               <Text style={styles.ticketButtonText}>
-                {event.ticketUrl ? 'Get Tickets' : 'Find Tickets'}
+                {event.ticketUrl ? i18n.t('eventDetails.getTickets') : i18n.t('discover.findTickets')}
               </Text>
             </TouchableOpacity>
           )}

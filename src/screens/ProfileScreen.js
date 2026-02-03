@@ -17,6 +17,7 @@ import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import i18n from '../i18n';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -52,32 +53,32 @@ export default function ProfileScreen() {
         setStats(prev => ({ ...prev, swiped: 0 }));
         
         if (Platform.OS === 'web') {
-          window.alert('Swiped events have been reset. You can now see all events again!');
+          window.alert(i18n.t('profile.resetSuccess'));
         } else {
-          Alert.alert('Success', 'Swiped events have been reset. You can now see all events again!');
+          Alert.alert(i18n.t('common.success'), i18n.t('profile.resetSuccess'));
         }
       } catch (error) {
         console.error('Error resetting swiped events:', error);
         if (Platform.OS === 'web') {
-          window.alert('Failed to reset. Please try again.');
+          window.alert(i18n.t('profile.resetFailed'));
         } else {
-          Alert.alert('Error', 'Failed to reset. Please try again.');
+          Alert.alert(i18n.t('common.error'), i18n.t('profile.resetFailed'));
         }
       }
       setLoading(false);
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm('This will reset all your swiped events so you can see them again. Continue?')) {
+      if (window.confirm(i18n.t('profile.resetConfirm'))) {
         await doReset();
       }
     } else {
       Alert.alert(
-        'Reset Swiped Events',
-        'This will reset all your swiped events so you can see them again. Continue?',
+        i18n.t('profile.resetSwiped'),
+        i18n.t('profile.resetConfirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Reset', onPress: doReset },
+          { text: i18n.t('common.cancel'), style: 'cancel' },
+          { text: i18n.t('common.reset'), onPress: doReset },
         ]
       );
     }
@@ -100,18 +101,18 @@ export default function ProfileScreen() {
         // If error is due to requiring recent login
         if (error.code === 'auth/requires-recent-login') {
           if (Platform.OS === 'web') {
-            window.alert('For security, please sign out and sign back in, then try deleting your account again.');
+            window.alert(i18n.t('profile.reAuthRequired'));
           } else {
             Alert.alert(
-              'Re-authentication Required', 
-              'For security, please sign out and sign back in, then try deleting your account again.'
+              i18n.t('profile.reAuthRequiredTitle'), 
+              i18n.t('profile.reAuthRequired')
             );
           }
         } else {
           if (Platform.OS === 'web') {
-            window.alert('Failed to delete account. Please try again.');
+            window.alert(i18n.t('profile.deleteAccountFailed'));
           } else {
-            Alert.alert('Error', 'Failed to delete account. Please try again.');
+            Alert.alert(i18n.t('common.error'), i18n.t('profile.deleteAccountFailed'));
           }
         }
       }
@@ -119,16 +120,16 @@ export default function ProfileScreen() {
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.')) {
+      if (window.confirm(i18n.t('profile.deleteConfirm'))) {
         await doDelete();
       }
     } else {
       Alert.alert(
-        'Delete Account',
-        'Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.',
+        i18n.t('profile.deleteAccount'),
+        i18n.t('profile.deleteConfirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
+          { text: i18n.t('common.cancel'), style: 'cancel' },
+          { text: i18n.t('common.delete'), style: 'destructive', onPress: doDelete },
         ]
       );
     }
@@ -140,16 +141,16 @@ export default function ProfileScreen() {
 
   const handleSignOut = async () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to sign out?')) {
+      if (window.confirm(i18n.t('profile.signOutConfirm'))) {
         await signOut();
       }
     } else {
       Alert.alert(
-        'Sign Out',
-        'Are you sure you want to sign out?',
+        i18n.t('common.signOut'),
+        i18n.t('profile.signOutConfirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign Out', onPress: signOut },
+          { text: i18n.t('common.cancel'), style: 'cancel' },
+          { text: i18n.t('common.signOut'), onPress: signOut },
         ]
       );
     }
@@ -158,7 +159,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{i18n.t('profile.title')}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -175,27 +176,27 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{stats.saved}</Text>
-              <Text style={styles.statLabel}>Saved</Text>
+              <Text style={styles.statLabel}>{i18n.t('profile.saved')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{stats.swiped}</Text>
-              <Text style={styles.statLabel}>Swiped</Text>
+              <Text style={styles.statLabel}>{i18n.t('profile.swiped')}</Text>
             </View>
           </View>
         </View>
 
         {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionTitle}>{i18n.t('profile.preferences')}</Text>
           
           <TouchableOpacity style={styles.menuItem} onPress={handleResetSwiped} disabled={loading}>
             <View style={[styles.menuIcon, { backgroundColor: '#E8FAF8' }]}>
               <Ionicons name="refresh-outline" size={20} color="#4ECDC4" />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuText}>Reset Swiped Events</Text>
-              <Text style={styles.menuSubtext}>See events you've already swiped on</Text>
+              <Text style={styles.menuText}>{i18n.t('profile.resetSwiped')}</Text>
+              <Text style={styles.menuSubtext}>{i18n.t('profile.resetSwipedText')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
@@ -203,15 +204,15 @@ export default function ProfileScreen() {
 
         {/* Account Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>{i18n.t('profile.account')}</Text>
           
           <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
             <View style={[styles.menuIcon, { backgroundColor: '#FFF3E8' }]}>
               <Ionicons name="help-circle-outline" size={20} color="#FF9F43" />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuText}>Help & Support</Text>
-              <Text style={styles.menuSubtext}>Get help or send feedback</Text>
+              <Text style={styles.menuText}>{i18n.t('profile.helpSupport')}</Text>
+              <Text style={styles.menuSubtext}>{i18n.t('profile.helpSupportText')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
@@ -221,8 +222,8 @@ export default function ProfileScreen() {
               <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
             </View>
             <View style={styles.menuContent}>
-              <Text style={[styles.menuText, { color: '#FF6B6B' }]}>Delete Account</Text>
-              <Text style={styles.menuSubtext}>Permanently delete your account</Text>
+              <Text style={[styles.menuText, { color: '#FF6B6B' }]}>{i18n.t('profile.deleteAccount')}</Text>
+              <Text style={styles.menuSubtext}>{i18n.t('profile.deleteAccountText')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
@@ -231,11 +232,11 @@ export default function ProfileScreen() {
         {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} disabled={loading}>
           <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>{i18n.t('common.signOut')}</Text>
         </TouchableOpacity>
 
         {/* App Version */}
-        <Text style={styles.version}>EventSwipe v1.0.0</Text>
+        <Text style={styles.version}>{i18n.t('profile.version')}</Text>
       </ScrollView>
     </View>
   );

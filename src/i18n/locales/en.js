@@ -110,6 +110,7 @@ export default {
     eventPostedText: 'Your event has been posted successfully and is now live for others to discover.',
     viewEvents: 'View Events',
     postAnother: 'Post Another Event',
+    photoPermissionRequired: 'Please allow access to your photos to add an event image.',
   },
 
   // Categories
@@ -124,6 +125,7 @@ export default {
     networking: 'Networking',
     family: 'Family',
     outdoor: 'Outdoor',
+    event: 'Event',
   },
 
   // Profile Screen
@@ -145,6 +147,7 @@ export default {
     deleteConfirm: 'Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.',
     deleteAccountFailed: 'Failed to delete account. Please try again.',
     reAuthRequired: 'For security, please sign out and sign back in, then try deleting your account again.',
+    reAuthRequiredTitle: 'Re-authentication Required',
     signOutConfirm: 'Are you sure you want to sign out?',
     version: 'EventSwipe v1.0.0',
   },
@@ -157,6 +160,9 @@ export default {
     reportEvent: 'Report Event',
     deleteEvent: 'Delete Event',
     deleteConfirm: 'Are you sure you want to delete this event? This action cannot be undone.',
+    seeTickets: 'See tickets',
+    untitledEvent: 'Untitled Event',
+    venueTBA: 'Venue TBA',
   },
 
   // Report Modal
@@ -242,5 +248,15 @@ export default {
     network: 'Network error. Please check your connection.',
     notFound: 'Not found.',
     unauthorized: 'Please sign in to continue.',
+    eventNotFound: 'Event not found.',
+    cannotDeleteOthers: 'You can only delete your own events.',
+    // Firebase auth errors
+    wrongPassword: 'Incorrect password. Please try again.',
+    userNotFound: 'No account found with this email.',
+    emailInUse: 'An account with this email already exists.',
+    invalidEmail: 'Please enter a valid email address.',
+    weakPassword: 'Password must be at least 6 characters.',
+    tooManyRequests: 'Too many attempts. Please try again later.',
+    networkFailed: 'Network error. Please check your connection.',
   },
 };

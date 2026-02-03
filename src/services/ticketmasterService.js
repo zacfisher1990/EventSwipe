@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import i18n from '../i18n';
 
 const TICKETMASTER_API_KEY = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY;
 const BASE_URL = Platform.OS === 'web' 
@@ -214,7 +215,7 @@ const transformEvent = (tmEvent) => {
     ];
     
     if (knownComedians.some(comedian => textToSearch.includes(comedian))) {
-      return 'Comedy';
+      return i18n.t('categories.comedy');
     }
     
     // SECOND: Check for comedy keywords in title/venue
@@ -224,12 +225,12 @@ const transformEvent = (tmEvent) => {
         textToSearch.includes('laugh factory') || textToSearch.includes('funny bone') ||
         textToSearch.includes('comedy club') || textToSearch.includes('comedyfest') ||
         textToSearch.includes('comic') || textToSearch.includes('laughs')) {
-      return 'Comedy';
+      return i18n.t('categories.comedy');
     }
     
     // THIRD: If the API says it's Comedy genre, trust that
     if (isValid(genre) && genre.toLowerCase() === 'comedy') {
-      return 'Comedy';
+      return i18n.t('categories.comedy');
     }
     
     // FOURTH: Use API classification for other categories
@@ -240,19 +241,19 @@ const transformEvent = (tmEvent) => {
     
     // FIFTH: Keyword detection for other categories
     if (textToSearch.includes('drag') || textToSearch.includes('burlesque')) {
-      return 'Nightlife';
+      return i18n.t('categories.nightlife');
     }
     if (textToSearch.includes('concert') || textToSearch.includes('live music') || textToSearch.includes('tour')) {
-      return 'Music';
+      return i18n.t('categories.music');
     }
     if (textToSearch.includes('game') || textToSearch.includes('vs.') || textToSearch.includes(' v ')) {
-      return 'Sports';
+      return i18n.t('categories.sports');
     }
     if (textToSearch.includes('broadway') || textToSearch.includes('musical')) {
-      return 'Arts & Theatre';
+      return i18n.t('categories.arts');
     }
     
-    return 'Event';
+    return i18n.t('categories.event');
   };
 
   const rawCategory = getCategory();
@@ -277,7 +278,7 @@ const transformEvent = (tmEvent) => {
       ? (priceRange.min === priceRange.max 
           ? `$${priceRange.min}` 
           : `$${priceRange.min} - $${priceRange.max}`)
-      : 'See tickets',
+      : i18n.t('eventDetails.seeTickets'),
     image: image,
     ticketUrl: tmEvent.url || '',
     source: 'ticketmaster',

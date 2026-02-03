@@ -16,6 +16,7 @@ import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
 import { searchEvents as searchTicketmaster } from './ticketmasterService';
 import { searchEvents as searchSeatGeek } from './seatgeekService';
+import i18n from '../i18n';
 
 // Calculate distance between two coordinates in miles (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -546,12 +547,12 @@ export const deleteEvent = async (eventId, userId) => {
     const eventDoc = await getDoc(eventRef);
     
     if (!eventDoc.exists()) {
-      return { success: false, error: 'Event not found' };
+      return { success: false, error: i18n.t('errors.eventNotFound') };
     }
     
     // Verify the user owns this event
     if (eventDoc.data().posterId !== userId) {
-      return { success: false, error: 'You can only delete your own events' };
+      return { success: false, error: i18n.t('errors.cannotDeleteOthers') };
     }
     
     await deleteDoc(eventRef);

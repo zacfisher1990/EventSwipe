@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getUserEvents, getSavedEvents, unsaveEvent, deleteEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
+import i18n from '../i18n';
 
 // Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
 const parseEventDate = (dateString) => {
@@ -115,24 +116,24 @@ export default function ActivityScreen() {
         // Remove from local state
         setPostedEvents(prev => prev.filter(e => e.id !== eventId));
       } else {
-        Alert.alert('Error', result.error || 'Failed to delete event');
+        Alert.alert(i18n.t('common.error'), result.error || i18n.t('errors.generic'));
       }
     }
   };
 
   const getDaysUntil = (dateString) => {
     const eventDate = parseEventDate(dateString);
-    if (!eventDate) return 'Date TBD';
+    if (!eventDate) return i18n.t('time.dateTBD');
     
     const now = new Date();
     const diffTime = eventDate - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays < 7) return `In ${diffDays} days`;
-    if (diffDays < 30) return `In ${Math.floor(diffDays / 7)} weeks`;
-    return `In ${Math.floor(diffDays / 30)} months`;
+    if (diffDays === 0) return i18n.t('time.today');
+    if (diffDays === 1) return i18n.t('time.tomorrow');
+    if (diffDays < 7) return i18n.t('time.inDays', { count: diffDays });
+    if (diffDays < 30) return i18n.t('time.inWeeks', { count: Math.floor(diffDays / 7) });
+    return i18n.t('time.inMonths', { count: Math.floor(diffDays / 30) });
   };
 
   const renderUpcomingEvent = ({ item }) => (
@@ -167,11 +168,11 @@ export default function ActivityScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Ionicons name="eye-outline" size={16} color="#666" />
-            <Text style={styles.statText}>{item.views || 0} views</Text>
+            <Text style={styles.statText}>{item.views || 0} {i18n.t('activity.views')}</Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="heart-outline" size={16} color="#FF6B6B" />
-            <Text style={styles.statText}>{item.saves || 0} saves</Text>
+            <Text style={styles.statText}>{item.saves || 0} {i18n.t('activity.saves')}</Text>
           </View>
         </View>
       </View>
@@ -181,9 +182,9 @@ export default function ActivityScreen() {
   const renderEmptyUpcoming = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyEmoji}>📅</Text>
-      <Text style={styles.emptyTitle}>No upcoming events</Text>
+      <Text style={styles.emptyTitle}>{i18n.t('activity.noUpcoming')}</Text>
       <Text style={styles.emptyText}>
-        Events you save will appear here as reminders.
+        {i18n.t('activity.noUpcomingText')}
       </Text>
     </View>
   );
@@ -191,9 +192,9 @@ export default function ActivityScreen() {
   const renderEmptyPosted = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyEmoji}>📝</Text>
-      <Text style={styles.emptyTitle}>No posted events</Text>
+      <Text style={styles.emptyTitle}>{i18n.t('activity.noPosted')}</Text>
       <Text style={styles.emptyText}>
-        Events you create will appear here with their stats.
+        {i18n.t('activity.noPostedText')}
       </Text>
     </View>
   );
@@ -201,7 +202,7 @@ export default function ActivityScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Activity</Text>
+        <Text style={styles.headerTitle}>{i18n.t('activity.title')}</Text>
       </View>
 
       {/* Tab Switcher */}
@@ -216,7 +217,7 @@ export default function ActivityScreen() {
             color={activeTab === 'upcoming' ? '#4ECDC4' : '#999'} 
           />
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
-            Upcoming
+            {i18n.t('activity.upcoming')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -229,7 +230,7 @@ export default function ActivityScreen() {
             color={activeTab === 'posted' ? '#4ECDC4' : '#999'} 
           />
           <Text style={[styles.tabText, activeTab === 'posted' && styles.activeTabText]}>
-            My Events
+            {i18n.t('activity.myEvents')}
           </Text>
         </TouchableOpacity>
       </View>

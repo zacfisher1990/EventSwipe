@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import i18n from '../i18n';
 
 const SEATGEEK_CLIENT_ID = process.env.EXPO_PUBLIC_SEATGEEK_CLIENT_ID;
 const BASE_URL = 'https://api.seatgeek.com/2';
@@ -49,23 +50,26 @@ const CATEGORY_MAP = {
   'circus': 'family',
 };
 
-// Get display category name
+// Get display category name (localized)
 const getCategoryDisplay = (taxonomies, category) => {
-  const DISPLAY_MAP = {
-    'music': 'Music',
-    'sports': 'Sports',
-    'arts': 'Arts & Culture',
-    'comedy': 'Comedy',
-    'family': 'Family',
-    'outdoor': 'Outdoor',
-    'fitness': 'Fitness',
-    'food': 'Food & Drink',
-    'networking': 'Networking',
-    'nightlife': 'Nightlife',
-    'other': 'Event',
+  const categoryKey = category || 'other';
+  // Map to locale keys
+  const keyMap = {
+    'music': 'categories.music',
+    'sports': 'categories.sports',
+    'arts': 'categories.arts',
+    'comedy': 'categories.comedy',
+    'family': 'categories.family',
+    'outdoor': 'categories.outdoor',
+    'fitness': 'categories.fitness',
+    'food': 'categories.food',
+    'networking': 'categories.networking',
+    'nightlife': 'categories.nightlife',
+    'other': 'categories.event',
   };
   
-  return DISPLAY_MAP[category] || 'Event';
+  const localeKey = keyMap[categoryKey] || 'categories.event';
+  return i18n.t(localeKey);
 };
 
 // Transform SeatGeek event to your app's format
@@ -103,16 +107,16 @@ const transformEvent = (sgEvent) => {
       }
       return `$${low}`;
     }
-    return 'See tickets';
+    return i18n.t('eventDetails.seeTickets');
   };
 
   return {
     id: `sg_${sgEvent.id}`,
-    title: sgEvent.title || sgEvent.short_title || 'Untitled Event',
+    title: sgEvent.title || sgEvent.short_title || i18n.t('eventDetails.untitledEvent'),
     description: sgEvent.description || '',
     date: date,
     time: time,
-    location: venue.name || 'Venue TBA',
+    location: venue.name || i18n.t('eventDetails.venueTBA'),
     city: venue.city || '',
     state: venue.state || '',
     address: venue.address || '',

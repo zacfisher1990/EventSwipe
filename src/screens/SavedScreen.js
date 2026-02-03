@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getSavedEvents, unsaveEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
+import i18n from '../i18n';
 
 // Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
 const parseEventDate = (dateString) => {
@@ -87,17 +88,19 @@ export default function SavedScreen() {
     }
   };
 
+  const confirmMessage = i18n.t('saved.removeConfirm', { title: eventTitle });
+
   if (Platform.OS === 'web') {
-    if (window.confirm(`Remove "${eventTitle}" from saved events?`)) {
+    if (window.confirm(confirmMessage)) {
       await doUnsave();
     }
   } else {
     Alert.alert(
-      'Remove Event',
-      `Remove "${eventTitle}" from saved events?`,
+      i18n.t('saved.removeEvent'),
+      confirmMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: doUnsave },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
+        { text: i18n.t('common.remove'), style: 'destructive', onPress: doUnsave },
       ]
     );
   }
@@ -133,9 +136,9 @@ const handleUnsaveFromModal = () => {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyEmoji}>💾</Text>
-      <Text style={styles.emptyTitle}>No saved events yet</Text>
+      <Text style={styles.emptyTitle}>{i18n.t('saved.noSaved')}</Text>
       <Text style={styles.emptyText}>
-        Swipe right on events you're interested in and they'll appear here.
+        {i18n.t('saved.noSavedText')}
       </Text>
     </View>
   );
@@ -143,7 +146,7 @@ const handleUnsaveFromModal = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Saved Events</Text>
+        <Text style={styles.headerTitle}>{i18n.t('saved.title')}</Text>
       </View>
       <FlatList
         data={savedEvents}
