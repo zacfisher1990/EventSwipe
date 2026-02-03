@@ -395,23 +395,34 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     if (location && filters?.distance) {
       const beforeCount = events.length;
       events = events.filter(event => {
-        if (!event.latitude || !event.longitude) {
-          if (event.source === 'firebase') {
-            event.distance = 'Unknown';
-            return true;
-          }
-          return true;
+        // Validate coordinates exist and are valid numbers
+        const hasValidCoords = 
+          event.latitude != null && 
+          event.longitude != null &&
+          !isNaN(parseFloat(event.latitude)) && 
+          !isNaN(parseFloat(event.longitude));
+        
+        if (!hasValidCoords) {
+          // Exclude events without valid coordinates - we can't verify their distance
+          console.log(`Excluding event without valid coords: "${event.title}" (${event.source})`);
+          return false;
         }
         
         const distance = calculateDistance(
           location.latitude,
           location.longitude,
-          event.latitude,
-          event.longitude
+          parseFloat(event.latitude),
+          parseFloat(event.longitude)
         );
         
         event.distance = `${Math.round(distance)} mi`;
-        return distance <= filters.distance;
+        
+        if (distance > filters.distance) {
+          console.log(`Excluding event outside radius: "${event.title}" - ${Math.round(distance)} mi away`);
+          return false;
+        }
+        
+        return true;
       });
       console.log(`After distance filter: ${events.length} (removed ${beforeCount - events.length})`);
     }

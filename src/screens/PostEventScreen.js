@@ -18,6 +18,32 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { createEvent } from '../services/eventService';
 
+// Geocode address to get coordinates using Nominatim
+const geocodeAddress = async (addressString) => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'EventSwipe/1.0',
+        },
+      }
+    );
+    const results = await response.json();
+    
+    if (results && results.length > 0) {
+      return {
+        latitude: parseFloat(results[0].lat),
+        longitude: parseFloat(results[0].lon),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
+
 const CATEGORIES = [
   { id: 'music', label: 'Music', emoji: '🎵' },
   { id: 'food', label: 'Food & Drink', emoji: '🍔' },
@@ -149,7 +175,22 @@ export default function PostEventScreen({ navigation }) {
     return;
   }
 
+  // Require address for geocoding
+  if (!address) {
+    setError('Please enter an address so your event can be found by nearby users.');
+    return;
+  }
+
   setLoading(true);
+
+  // Geocode the address to get coordinates
+  const coords = await geocodeAddress(address);
+  
+  if (!coords) {
+    setLoading(false);
+    setError('Could not find that address. Please check it and try again, or add more details (city, country).');
+    return;
+  }
 
   const eventData = {
     title,
@@ -161,9 +202,10 @@ export default function PostEventScreen({ navigation }) {
     category,
     ticketUrl,
     price: price || 'Free',
+    latitude: coords.latitude,
+    longitude: coords.longitude,
     // Use placeholder if no image selected
     image: image || `https://picsum.photos/400/300?random=${Date.now()}`,
-    distance: '0 mi',
   };
 
   // Pass the local image URI to createEvent for upload
@@ -391,10 +433,10 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Address */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Address</Text>
+          <Text style={styles.label}>Address *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Street address, city, state"
+            placeholder="123 Main St, City, State, Country"
             placeholderTextColor="#999"
             value={address}
             onChangeText={setAddress}
