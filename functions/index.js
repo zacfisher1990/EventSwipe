@@ -12,8 +12,8 @@ const db = admin.firestore();
 const ADMIN_EMAIL = 'support@proxtrades.com';
 
 // API Keys - set with: firebase functions:config:set ticketmaster.key="XXX" seatgeek.client_id="YYY"
-const TICKETMASTER_API_KEY = functions.config().ticketmaster?.key;
-const SEATGEEK_CLIENT_ID = functions.config().seatgeek?.client_id;
+const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
+const SEATGEEK_CLIENT_ID = process.env.SEATGEEK_CLIENT_ID;
 
 // Cache settings
 const CACHE_TTL_HOURS = 6;
