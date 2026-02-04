@@ -8,6 +8,7 @@ import id from './locales/id';
 import de from './locales/de';
 import fr from './locales/fr';
 import ru from './locales/ru';
+import uk from './locales/uk';
 
 const i18n = new I18n({
   en,
@@ -18,6 +19,7 @@ const i18n = new I18n({
   de,
   fr,
   ru,
+  uk,
 });
 
 // Set the locale based on device settings
