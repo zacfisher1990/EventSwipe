@@ -12,11 +12,17 @@ import {
   Timestamp,
   deleteDoc 
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
-import { searchEvents as searchTicketmaster } from './ticketmasterService';
-import { searchEvents as searchSeatGeek } from './seatgeekService';
+// REMOVED: Direct API imports no longer needed
+// import { searchEvents as searchTicketmaster } from './ticketmasterService';
+// import { searchEvents as searchSeatGeek } from './seatgeekService';
 import i18n from '../i18n';
+
+// Initialize Cloud Functions
+const functions = getFunctions();
+const getEventsForLocation = httpsCallable(functions, 'getEventsForLocation');
 
 // Calculate distance between two coordinates in miles (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -106,6 +112,21 @@ const VALID_FILTER_CATEGORIES = [
 
 // Categories that the APIs can filter server-side
 const API_FILTERABLE_CATEGORIES = ['music', 'sports', 'comedy', 'arts', 'family'];
+
+// Category-specific placeholder images (for events missing images)
+const CATEGORY_PLACEHOLDERS = {
+  'music': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
+  'comedy': 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&q=80',
+  'sports': 'https://images.unsplash.com/photo-1461896836934-58cd91f22092?w=800&q=80',
+  'arts': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&q=80',
+  'nightlife': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800&q=80',
+  'family': 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=800&q=80',
+  'food': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
+  'fitness': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+  'networking': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
+  'outdoor': 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&q=80',
+  'other': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
+};
 
 // Parse date string in multiple formats
 const parseEventDate = (dateString) => {
@@ -257,14 +278,15 @@ export const getSavedEvents = async (userId) => {
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
-    return userDoc.data()?.savedEvents || [];
+    const savedEvents = userDoc.data()?.savedEvents || [];
+    return { success: true, events: savedEvents };
   } catch (error) {
     console.error('Error getting saved events:', error);
-    return [];
+    return { success: false, error: error.message, events: [] };
   }
 };
 
-// Get user's swiped event IDs
+// Get list of event IDs the user has already swiped
 export const getSwipedEventIds = async (userId) => {
   try {
     const userRef = doc(db, 'users', userId);
@@ -276,42 +298,44 @@ export const getSwipedEventIds = async (userId) => {
   }
 };
 
-// Create a new event
-export const createEvent = async (eventData, userId, imageUri = null) => {
+// Post a new event
+export const postEvent = async (eventData, userId) => {
   try {
-    const eventsRef = collection(db, 'events');
-    
     let imageUrl = eventData.image;
     
-    if (imageUri && !imageUri.startsWith('http')) {
-      const tempId = Date.now().toString();
-      const uploadResult = await uploadEventImage(imageUri, tempId);
+    if (eventData.imageUri && eventData.imageUri.startsWith('file://')) {
+      const uploadResult = await uploadEventImage(eventData.imageUri, userId);
       if (uploadResult.success) {
         imageUrl = uploadResult.url;
       } else {
-        imageUrl = `https://picsum.photos/400/300?random=${tempId}`;
+        console.error('Image upload failed:', uploadResult.error);
       }
     }
-    
+
+    const eventsRef = collection(db, 'events');
     const newEvent = {
       ...eventData,
       image: imageUrl,
       posterId: userId,
-      createdAt: Timestamp.now(),
+      source: 'firebase',
       active: true,
+      createdAt: Timestamp.now(),
     };
     
-    const docRef = await addDoc(eventsRef, newEvent);
+    delete newEvent.imageUri;
     
+    const docRef = await addDoc(eventsRef, newEvent);
     return { success: true, eventId: docRef.id };
   } catch (error) {
-    console.error('Error creating event:', error);
+    console.error('Error posting event:', error);
     return { success: false, error: error.message };
   }
 };
 
-// Get all active events (excluding ones user has swiped)
-export const getEvents = async (userId = null, location = null, filters = null) => {
+// ============================================================
+// GET EVENTS - Now uses Cloud Function with caching
+// ============================================================
+export const getEvents = async (userId, location, filters = {}) => {
   try {
     console.log('=== getEvents called ===');
     console.log('Filters:', JSON.stringify(filters, null, 2));
@@ -332,59 +356,41 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     }));
     console.log(`Firebase events: ${firebaseEvents.length}`);
     
-    // Determine which categories to request from APIs
-    const selectedCategories = filters?.categories || [];
-    const allCategoriesSelected = selectedCategories.length === 0 || 
-                                   selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
-    
-    // Only pass categories to APIs if user selected specific ones (not all)
-    // and at least one is API-filterable
-    let apiCategories = [];
-    if (!allCategoriesSelected) {
-      apiCategories = selectedCategories.filter(cat => API_FILTERABLE_CATEGORIES.includes(cat));
-      console.log('API-filterable categories requested:', apiCategories);
-    }
-    
-    // Build API options
-    const radius = filters?.distance || 50;
-    const apiOptions = {
-      radius,
-      categories: apiCategories,  // Pass categories to APIs
-    };
-    
-    if (location) {
-      apiOptions.latitude = location.latitude;
-      apiOptions.longitude = location.longitude;
-    }
-    
-    // Fetch from both APIs in parallel
-    const [tmResult, sgResult] = await Promise.all([
-      searchTicketmaster(apiOptions),
-      searchSeatGeek(apiOptions),
-    ]);
-    
-    // Collect API events
+    // ========================================
+    // FETCH API EVENTS VIA CLOUD FUNCTION
+    // ========================================
     let apiEvents = [];
     
-    if (tmResult.success && tmResult.events.length > 0) {
-      console.log(`Ticketmaster events: ${tmResult.events.length}`);
-      apiEvents = [...apiEvents, ...tmResult.events];
-    } else if (tmResult.error) {
-      console.error('Ticketmaster error:', tmResult.error);
-    }
-    
-    if (sgResult.success && sgResult.events.length > 0) {
-      console.log(`SeatGeek events: ${sgResult.events.length}`);
-      apiEvents = [...apiEvents, ...sgResult.events];
-    } else if (sgResult.error) {
-      console.error('SeatGeek error:', sgResult.error);
+    if (location?.latitude && location?.longitude) {
+      const radius = filters?.distance || 50;
+      
+      try {
+        console.log('Calling Cloud Function for cached events...');
+        const result = await getEventsForLocation({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          radius: radius,
+        });
+        
+        if (result.data.success) {
+          apiEvents = result.data.events || [];
+          console.log(`Got ${apiEvents.length} events from Cloud Function (fromCache: ${result.data.fromCache})`);
+          
+          // Add placeholder images for events missing them
+          apiEvents = apiEvents.map(event => ({
+            ...event,
+            image: event.image || CATEGORY_PLACEHOLDERS[event.category] || CATEGORY_PLACEHOLDERS['other'],
+          }));
+        }
+      } catch (functionError) {
+        console.error('Cloud Function error:', functionError);
+        // Could fall back to direct API calls here if needed
+      }
     }
     
     // ========================================
     // DEDUPLICATION: Across ALL sources
     // ========================================
-    // Combine all events and deduplicate together
-    // Priority: Ticketmaster > SeatGeek > Firebase
     let allEvents = [...firebaseEvents, ...apiEvents];
     console.log(`Total events before deduplication: ${allEvents.length}`);
     
@@ -397,7 +403,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     if (location && filters?.distance) {
       const beforeCount = events.length;
       events = events.filter(event => {
-        // Validate coordinates exist and are valid numbers
         const hasValidCoords = 
           event.latitude != null && 
           event.longitude != null &&
@@ -405,7 +410,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
           !isNaN(parseFloat(event.longitude));
         
         if (!hasValidCoords) {
-          // Exclude events without valid coordinates - we can't verify their distance
           console.log(`Excluding event without valid coords: "${event.title}" (${event.source})`);
           return false;
         }
@@ -420,7 +424,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
         event.distance = `${Math.round(distance)} mi`;
         
         if (distance > filters.distance) {
-          console.log(`Excluding event outside radius: "${event.title}" - ${Math.round(distance)} mi away`);
           return false;
         }
         
@@ -440,18 +443,18 @@ export const getEvents = async (userId = null, location = null, filters = null) 
     }
     
     // ========================================
-    // FILTER 3: Categories (client-side backup)
+    // FILTER 3: Categories
     // ========================================
-    // Even though we filter at API level, also filter here for:
-    // - Firebase events
-    // - Categories not supported by APIs (nightlife, food, fitness, etc.)
+    const selectedCategories = filters?.categories || [];
+    const allCategoriesSelected = selectedCategories.length === 0 || 
+                                   selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
+    
     if (selectedCategories.length > 0 && !allCategoriesSelected) {
       const beforeCount = events.length;
       
       events = events.filter(event => {
         const eventCategory = (event.category || '').toLowerCase();
         
-        // If event has no category or 'other', include it
         if (!eventCategory || eventCategory === 'other') {
           return true;
         }
@@ -476,7 +479,6 @@ export const getEvents = async (userId = null, location = null, filters = null) 
         
         const eventDate = parseEventDate(event.date);
         if (!eventDate) {
-          console.log(`Invalid date for event: "${event.title}" - date: "${event.date}"`);
           return false;
         }
         
@@ -550,7 +552,6 @@ export const deleteEvent = async (eventId, userId) => {
       return { success: false, error: i18n.t('errors.eventNotFound') };
     }
     
-    // Verify the user owns this event
     if (eventDoc.data().posterId !== userId) {
       return { success: false, error: i18n.t('errors.cannotDeleteOthers') };
     }
