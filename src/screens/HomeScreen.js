@@ -71,7 +71,7 @@ export default function HomeScreen() {
     console.log('Passed on:', event?.title);
     
     if (user?.uid && event) {
-      await passEvent(user.uid, event.id);
+      await passEvent(user.uid, event.id, event.groupedIds);
     }
   };
 
@@ -175,7 +175,20 @@ export default function HomeScreen() {
             )}
           </View>
           <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
-          <Text style={styles.date}>{event.date} • {event.time}</Text>
+          {event.hasMultipleDates ? (
+            <View>
+              <View style={styles.multiDateBadge}>
+                <Text style={styles.multiDateBadgeText}>
+                  📅 {event.dateCount} {i18n.t('discover.dates', { defaultValue: 'Dates Available' })}
+                </Text>
+              </View>
+              <Text style={styles.date}>
+                {i18n.t('discover.nextDate', { defaultValue: 'Next' })}: {event.date} • {event.time}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.date}>{event.date} • {event.time}</Text>
+          )}
           <Text style={styles.location} numberOfLines={1}>{event.location}</Text>
           {event.price && event.price !== 'See tickets' && (
             <View style={styles.priceTag}>
@@ -369,6 +382,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 6,
+  },
+  multiDateBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  multiDateBadgeText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
   },
   location: {
     fontSize: 14,

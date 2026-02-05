@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,11 +19,12 @@ import { useAuth } from '../context/AuthContext';
 import { postEvent } from '../services/eventService';
 import i18n from '../i18n';
 
-// Geocode address to get coordinates using Nominatim
-const geocodeAddress = async (addressString) => {
+// Search addresses using Nominatim (returns multiple results for suggestions)
+const searchAddresses = async (query) => {
+  if (!query || query.length < 3) return [];
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=1`,
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
       {
         headers: {
           'User-Agent': 'EventSwipe/1.0',
@@ -33,15 +34,16 @@ const geocodeAddress = async (addressString) => {
     const results = await response.json();
     
     if (results && results.length > 0) {
-      return {
-        latitude: parseFloat(results[0].lat),
-        longitude: parseFloat(results[0].lon),
-      };
+      return results.map(r => ({
+        displayName: r.display_name,
+        latitude: parseFloat(r.lat),
+        longitude: parseFloat(r.lon),
+      }));
     }
-    return null;
+    return [];
   } catch (error) {
-    console.error('Geocoding error:', error);
-    return null;
+    console.error('Address search error:', error);
+    return [];
   }
 };
 
@@ -62,14 +64,18 @@ const getCategories = () => [
 export default function PostEventScreen({ navigation }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [eventDate, setEventDate] = useState(new Date());
-  const [eventTime, setEventTime] = useState(new Date());
+  const [dates, setDates] = useState([
+    { id: 1, date: new Date(), time: new Date(), dateSelected: false, timeSelected: false },
+  ]);
+  const [activePicker, setActivePicker] = useState({ type: null, index: null });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [dateSelected, setDateSelected] = useState(false);
-  const [timeSelected, setTimeSelected] = useState(false);
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingAddress, setSearchingAddress] = useState(false);
+  const [confirmedAddress, setConfirmedAddress] = useState(null); // { displayName, latitude, longitude }
   const [category, setCategory] = useState('');
   const [ticketUrl, setTicketUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -79,6 +85,7 @@ export default function PostEventScreen({ navigation }) {
   const [error, setError] = useState('');
 
   const { user } = useAuth();
+  const addressDebounceRef = useRef(null);
 
   // Format date for display (e.g., "Jan 15, 2025")
   const formatDateDisplay = (date) => {
@@ -117,9 +124,8 @@ export default function PostEventScreen({ navigation }) {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
-    if (selectedDate) {
-      setEventDate(selectedDate);
-      setDateSelected(true);
+    if (selectedDate && activePicker.index !== null) {
+      updateDateEntry(activePicker.index, { date: selectedDate, dateSelected: true });
     }
   };
 
@@ -127,10 +133,35 @@ export default function PostEventScreen({ navigation }) {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
     }
-    if (selectedTime) {
-      setEventTime(selectedTime);
-      setTimeSelected(true);
+    if (selectedTime && activePicker.index !== null) {
+      updateDateEntry(activePicker.index, { time: selectedTime, timeSelected: true });
     }
+  };
+
+  const updateDateEntry = (index, updates) => {
+    setDates(prev => prev.map((entry, i) => i === index ? { ...entry, ...updates } : entry));
+  };
+
+  const addDateEntry = () => {
+    setDates(prev => [
+      ...prev,
+      { id: Date.now(), date: new Date(), time: new Date(), dateSelected: false, timeSelected: false },
+    ]);
+  };
+
+  const removeDateEntry = (index) => {
+    if (dates.length <= 1) return;
+    setDates(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openDatePicker = (index) => {
+    setActivePicker({ type: 'date', index });
+    setShowDatePicker(true);
+  };
+
+  const openTimePicker = (index) => {
+    setActivePicker({ type: 'time', index });
+    setShowTimePicker(true);
   };
 
   const pickImage = async () => {
@@ -153,15 +184,64 @@ export default function PostEventScreen({ navigation }) {
     }
   };
 
+  // Handle address text changes with debounced search
+  const handleAddressChange = useCallback((text) => {
+    setAddress(text);
+    // Clear confirmed address if user edits the field
+    if (confirmedAddress) {
+      setConfirmedAddress(null);
+    }
+
+    // Clear any pending debounce
+    if (addressDebounceRef.current) {
+      clearTimeout(addressDebounceRef.current);
+    }
+
+    if (text.length < 3) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    // Debounce: wait 600ms after user stops typing
+    addressDebounceRef.current = setTimeout(async () => {
+      setSearchingAddress(true);
+      const results = await searchAddresses(text);
+      setAddressSuggestions(results);
+      setShowSuggestions(results.length > 0);
+      setSearchingAddress(false);
+    }, 600);
+  }, [confirmedAddress]);
+
+  // Handle selecting a suggestion
+  const selectAddressSuggestion = (suggestion) => {
+    setAddress(suggestion.displayName);
+    setConfirmedAddress(suggestion);
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+  };
+
+  // Clear confirmed address
+  const clearConfirmedAddress = () => {
+    setAddress('');
+    setConfirmedAddress(null);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setEventDate(new Date());
-    setEventTime(new Date());
-    setDateSelected(false);
-    setTimeSelected(false);
+    setDates([
+      { id: 1, date: new Date(), time: new Date(), dateSelected: false, timeSelected: false },
+    ]);
+    setActivePicker({ type: null, index: null });
     setLocation('');
     setAddress('');
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+    setSearchingAddress(false);
+    setConfirmedAddress(null);
     setCategory('');
     setTicketUrl('');
     setPrice('');
@@ -172,8 +252,17 @@ export default function PostEventScreen({ navigation }) {
   const handleSubmit = async () => {
   setError('');
   
-  if (!title || !dateSelected || !timeSelected || !location || !category) {
+  // Validate all date entries have both date and time selected
+  const completeDates = dates.filter(d => d.dateSelected && d.timeSelected);
+  if (!title || completeDates.length === 0 || !location || !category) {
     setError(i18n.t('postEvent.fillRequired'));
+    return;
+  }
+
+  // Check for incomplete entries
+  const incompleteDates = dates.filter(d => (d.dateSelected && !d.timeSelected) || (!d.dateSelected && d.timeSelected));
+  if (incompleteDates.length > 0) {
+    setError(i18n.t('postEvent.completeDateTimes', { defaultValue: 'Please complete or remove incomplete date/time entries' }));
     return;
   }
 
@@ -183,22 +272,35 @@ export default function PostEventScreen({ navigation }) {
     return;
   }
 
-  setLoading(true);
-
-  // Geocode the address to get coordinates
-  const coords = await geocodeAddress(address);
-  
-  if (!coords) {
-    setLoading(false);
-    setError(i18n.t('postEvent.addressNotFound'));
+  // Require confirmed address
+  if (!confirmedAddress) {
+    setError(i18n.t('postEvent.selectAddress', { defaultValue: 'Please select an address from the suggestions to confirm the location' }));
     return;
   }
+
+  setLoading(true);
+
+  // Use pre-resolved coordinates from the confirmed suggestion
+  const coords = {
+    latitude: confirmedAddress.latitude,
+    longitude: confirmedAddress.longitude,
+  };
+
+  // Sort dates chronologically
+  const sortedDates = [...completeDates].sort((a, b) => a.date - b.date);
+  const primaryDate = sortedDates[0];
+
+  // Build allDates array
+  const allDates = sortedDates.map(d => ({
+    date: formatDateForStorage(d.date),
+    time: formatTimeForStorage(d.time),
+  }));
 
   const eventData = {
     title,
     description,
-    date: formatDateForStorage(eventDate),  // YYYY-MM-DD format
-    time: formatTimeForStorage(eventTime),  // HH:MM format
+    date: formatDateForStorage(primaryDate.date),
+    time: formatTimeForStorage(primaryDate.time),
     location,
     address,
     category,
@@ -206,10 +308,14 @@ export default function PostEventScreen({ navigation }) {
     price: price || i18n.t('common.free'),
     latitude: coords.latitude,
     longitude: coords.longitude,
-    // Use placeholder if no image selected
     image: image || `https://picsum.photos/400/300?random=${Date.now()}`,
-    // Pass local URI for upload by postEvent
     imageUri: image,
+    // Multi-date fields
+    ...(allDates.length > 1 && {
+      allDates,
+      hasMultipleDates: true,
+      dateCount: allDates.length,
+    }),
   };
 
   const result = await postEvent(eventData, user.uid);
@@ -320,36 +426,51 @@ export default function PostEventScreen({ navigation }) {
           />
         </View>
 
-        {/* Date and Time */}
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>{i18n.t('postEvent.date')} *</Text>
-            <TouchableOpacity
-              style={styles.pickerButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={20} color="#666" />
-              <Text style={[styles.pickerButtonText, !dateSelected && styles.placeholderText]}>
-                {dateSelected ? formatDateDisplay(eventDate) : i18n.t('postEvent.selectDate')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>{i18n.t('postEvent.time')} *</Text>
-            <TouchableOpacity
-              style={styles.pickerButton}
-              onPress={() => setShowTimePicker(true)}
-            >
-              <Ionicons name="time-outline" size={20} color="#666" />
-              <Text style={[styles.pickerButtonText, !timeSelected && styles.placeholderText]}>
-                {timeSelected ? formatTimeDisplay(eventTime) : i18n.t('postEvent.selectTime')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+        {/* Dates and Times */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>{i18n.t('postEvent.date')} & {i18n.t('postEvent.time')} *</Text>
+          
+          {dates.map((entry, index) => (
+            <View key={entry.id} style={styles.dateEntryRow}>
+              <TouchableOpacity
+                style={[styles.pickerButton, { flex: 1, marginRight: 6 }]}
+                onPress={() => openDatePicker(index)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#666" />
+                <Text style={[styles.pickerButtonText, !entry.dateSelected && styles.placeholderText]}>
+                  {entry.dateSelected ? formatDateDisplay(entry.date) : i18n.t('postEvent.selectDate')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pickerButton, { flex: 1, marginLeft: 6 }]}
+                onPress={() => openTimePicker(index)}
+              >
+                <Ionicons name="time-outline" size={20} color="#666" />
+                <Text style={[styles.pickerButtonText, !entry.timeSelected && styles.placeholderText]}>
+                  {entry.timeSelected ? formatTimeDisplay(entry.time) : i18n.t('postEvent.selectTime')}
+                </Text>
+              </TouchableOpacity>
+              {dates.length > 1 && (
+                <TouchableOpacity
+                  style={styles.removeDateButton}
+                  onPress={() => removeDateEntry(index)}
+                >
+                  <Ionicons name="close-circle" size={24} color="#FF6B6B" />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addDateButton} onPress={addDateEntry}>
+            <Ionicons name="add-circle-outline" size={20} color="#4ECDC4" />
+            <Text style={styles.addDateButtonText}>
+              {i18n.t('postEvent.addAnotherDate', { defaultValue: 'Add another date' })}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Date Picker Modal */}
-        {showDatePicker && (
+        {showDatePicker && activePicker.index !== null && (
           Platform.OS === 'ios' ? (
             <Modal transparent animationType="slide">
               <View style={styles.pickerModalOverlay}>
@@ -359,14 +480,14 @@ export default function PostEventScreen({ navigation }) {
                       <Text style={styles.pickerModalCancel}>{i18n.t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
-                      setDateSelected(true);
+                      updateDateEntry(activePicker.index, { dateSelected: true });
                       setShowDatePicker(false);
                     }}>
                       <Text style={styles.pickerModalDone}>{i18n.t('common.done')}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
-                    value={eventDate}
+                    value={dates[activePicker.index].date}
                     mode="date"
                     display="spinner"
                     onChange={onDateChange}
@@ -377,7 +498,7 @@ export default function PostEventScreen({ navigation }) {
             </Modal>
           ) : (
             <DateTimePicker
-              value={eventDate}
+              value={dates[activePicker.index].date}
               mode="date"
               display="default"
               onChange={onDateChange}
@@ -387,7 +508,7 @@ export default function PostEventScreen({ navigation }) {
         )}
 
         {/* Time Picker Modal */}
-        {showTimePicker && (
+        {showTimePicker && activePicker.index !== null && (
           Platform.OS === 'ios' ? (
             <Modal transparent animationType="slide">
               <View style={styles.pickerModalOverlay}>
@@ -397,14 +518,14 @@ export default function PostEventScreen({ navigation }) {
                       <Text style={styles.pickerModalCancel}>{i18n.t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => {
-                      setTimeSelected(true);
+                      updateDateEntry(activePicker.index, { timeSelected: true });
                       setShowTimePicker(false);
                     }}>
                       <Text style={styles.pickerModalDone}>{i18n.t('common.done')}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
-                    value={eventTime}
+                    value={dates[activePicker.index].time}
                     mode="time"
                     display="spinner"
                     onChange={onTimeChange}
@@ -414,13 +535,14 @@ export default function PostEventScreen({ navigation }) {
             </Modal>
           ) : (
             <DateTimePicker
-              value={eventTime}
+              value={dates[activePicker.index].time}
               mode="time"
               display="default"
               onChange={onTimeChange}
             />
           )
         )}
+
 
         {/* Location */}
         <View style={styles.inputGroup}>
@@ -435,15 +557,73 @@ export default function PostEventScreen({ navigation }) {
         </View>
 
         {/* Address */}
-        <View style={styles.inputGroup}>
+        <View style={[styles.inputGroup, { zIndex: 10 }]}>
           <Text style={styles.label}>{i18n.t('postEvent.address')} *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={i18n.t('postEvent.addressPlaceholder')}
-            placeholderTextColor="#999"
-            value={address}
-            onChangeText={setAddress}
-          />
+          
+          {confirmedAddress ? (
+            // Confirmed address display
+            <View style={styles.confirmedAddressContainer}>
+              <View style={styles.confirmedAddressContent}>
+                <Ionicons name="checkmark-circle" size={20} color="#4ECDC4" />
+                <Text style={styles.confirmedAddressText} numberOfLines={2}>
+                  {confirmedAddress.displayName}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={clearConfirmedAddress} style={styles.confirmedAddressClear}>
+                <Ionicons name="close-circle" size={22} color="#999" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Address input with suggestions
+            <View>
+              <View style={styles.addressInputRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder={i18n.t('postEvent.addressPlaceholder')}
+                  placeholderTextColor="#999"
+                  value={address}
+                  onChangeText={handleAddressChange}
+                  onFocus={() => {
+                    if (addressSuggestions.length > 0) setShowSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    // Small delay so tap on suggestion registers before hiding
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                />
+                {searchingAddress && (
+                  <ActivityIndicator size="small" color="#4ECDC4" style={styles.addressSpinner} />
+                )}
+              </View>
+              
+              {address.length > 0 && address.length < 3 && (
+                <Text style={styles.addressHint}>
+                  {i18n.t('postEvent.keepTyping', { defaultValue: 'Keep typing for suggestions...' })}
+                </Text>
+              )}
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && addressSuggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  {addressSuggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.suggestionItem,
+                        index < addressSuggestions.length - 1 && styles.suggestionBorder,
+                      ]}
+                      onPress={() => selectAddressSuggestion(suggestion)}
+                    >
+                      <Ionicons name="location-outline" size={18} color="#4ECDC4" style={{ marginTop: 2 }} />
+                      <Text style={styles.suggestionText} numberOfLines={2}>
+                        {suggestion.displayName}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Category */}
@@ -607,6 +787,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
+  dateEntryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  removeDateButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  addDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  addDateButtonText: {
+    color: '#4ECDC4',
+    fontSize: 15,
+    fontWeight: '600',
+  },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -638,6 +838,74 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  // Address autocomplete styles
+  addressInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addressSpinner: {
+    position: 'absolute',
+    right: 16,
+  },
+  addressHint: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    gap: 10,
+  },
+  suggestionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    lineHeight: 20,
+  },
+  confirmedAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8FAF8',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#4ECDC4',
+  },
+  confirmedAddressContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  confirmedAddressText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    lineHeight: 20,
+  },
+  confirmedAddressClear: {
+    marginLeft: 8,
+    padding: 2,
   },
   // Success screen styles
   successContainer: {

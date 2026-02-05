@@ -371,8 +371,15 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
   const handleShare = async () => {
     try {
       let message = `${i18n.t('eventDetails.shareCheckOut')}\n\n🎉 ${event.title}`;
-      if (event.date) message += `\n📅 ${event.date}`;
-      if (event.time) message += ` • ${event.time}`;
+      if (event.hasMultipleDates && event.allDates) {
+        message += `\n📅 ${event.dateCount} dates:`;
+        event.allDates.forEach(d => {
+          message += `\n   • ${d.date}${d.time ? ` • ${d.time}` : ''}`;
+        });
+      } else {
+        if (event.date) message += `\n📅 ${event.date}`;
+        if (event.time) message += ` • ${event.time}`;
+      }
       if (event.location) message += `\n📍 ${event.location}`;
       if (event.ticketUrl) message += `\n\n🎟️ ${i18n.t('eventDetails.shareGetTickets')}: ${event.ticketUrl}`;
       message += `\n\n${i18n.t('eventDetails.shareFoundOn')}`;
@@ -468,10 +475,40 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
           <Text style={styles.title}>{event.title}</Text>
 
           {/* Date & Time */}
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
-            <Text style={styles.infoText}>{event.date} • {event.time}</Text>
-          </View>
+          {event.hasMultipleDates ? (
+            <View style={styles.multiDateSection}>
+              <View style={styles.infoRow}>
+                <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={styles.multiDateHeaderRow}>
+                    <Text style={styles.multiDateLabel}>
+                      📅 {event.dateCount} {i18n.t('discover.dates', { defaultValue: 'Dates Available' })}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.datesList}>
+                {event.allDates.map((d, idx) => (
+                  <View key={idx} style={styles.dateItem}>
+                    <View style={[styles.dateDot, idx === 0 && styles.dateDotFirst]} />
+                    <Text style={[styles.dateItemText, idx === 0 && styles.dateItemTextFirst]}>
+                      {d.date}{d.time ? ` • ${d.time}` : ''}
+                    </Text>
+                    {idx === 0 && (
+                      <View style={styles.nextBadge}>
+                        <Text style={styles.nextBadgeText}>{i18n.t('discover.nextDate', { defaultValue: 'Next' })}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
+              <Text style={styles.infoText}>{event.date} • {event.time}</Text>
+            </View>
+          )}
 
           {/* Location */}
           <TouchableOpacity style={styles.infoRow} onPress={handleGetDirections}>
@@ -679,6 +716,61 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 12,
     flex: 1,
+  },
+  multiDateSection: {
+    paddingBottom: 4,
+  },
+  multiDateHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  multiDateLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FF6B6B',
+  },
+  datesList: {
+    marginLeft: 52,
+    marginTop: 8,
+    marginBottom: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: '#eee',
+    paddingLeft: 16,
+  },
+  dateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  dateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ddd',
+    marginRight: 10,
+  },
+  dateDotFirst: {
+    backgroundColor: '#4ECDC4',
+  },
+  dateItemText: {
+    fontSize: 15,
+    color: '#666',
+    flex: 1,
+  },
+  dateItemTextFirst: {
+    color: '#333',
+    fontWeight: '500',
+  },
+  nextBadge: {
+    backgroundColor: '#E8FAF8',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  nextBadgeText: {
+    fontSize: 11,
+    color: '#4ECDC4',
+    fontWeight: '600',
   },
   locationInfo: {
     marginLeft: 12,

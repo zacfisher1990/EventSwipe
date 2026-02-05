@@ -102,6 +102,75 @@ const deduplicateEvents = (events) => {
   return result;
 };
 
+// Group events that are the same show/event but on different dates/times
+// into a single event with an allDates array
+const groupMultiDateEvents = (events) => {
+  const groups = new Map();
+  
+  for (const event of events) {
+    // Events already flagged as multi-date (e.g. user-posted) skip grouping
+    if (event.hasMultipleDates) {
+      groups.set(`__multidate_${event.id}`, [event]);
+      continue;
+    }
+    
+    // Build a grouping key from normalized title + venue
+    const titleKey = normalizeString(event.title);
+    const venueKey = normalizeString(event.location || event.venueName || '');
+    const groupKey = `${titleKey}__${venueKey}`;
+    
+    if (!titleKey) {
+      // Can't group events without a title — keep as-is
+      groups.set(`__ungrouped_${event.id}`, [event]);
+      continue;
+    }
+    
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
+    }
+    groups.get(groupKey).push(event);
+  }
+  
+  const result = [];
+  
+  for (const [, group] of groups) {
+    if (group.length === 1) {
+      // Single occurrence — pass through unchanged
+      result.push(group[0]);
+      continue;
+    }
+    
+    // Sort group by date (earliest first)
+    group.sort((a, b) => {
+      const dateA = parseEventDate(a.date);
+      const dateB = parseEventDate(b.date);
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA - dateB;
+    });
+    
+    // Collect all unique date/time combos
+    const allDates = group.map(e => ({
+      date: e.date,
+      time: e.time,
+      id: e.id,
+    }));
+    
+    // Use the earliest occurrence as the primary card
+    const primary = { ...group[0] };
+    primary.allDates = allDates;
+    primary.hasMultipleDates = true;
+    primary.dateCount = allDates.length;
+    
+    // Collect all IDs so swiping marks all occurrences as seen
+    primary.groupedIds = group.map(e => e.id);
+    
+    result.push(primary);
+  }
+  
+  return result;
+};
+
 // All valid filter category IDs
 const VALID_FILTER_CATEGORIES = [
   'music', 'food', 'sports', 'arts', 'nightlife', 
@@ -227,9 +296,10 @@ const getTimeRangeDates = (timeRange) => {
 export const saveEvent = async (userId, event) => {
   try {
     const userRef = doc(db, 'users', userId);
+    const idsToMark = event.groupedIds || [event.id];
     await updateDoc(userRef, {
       savedEvents: arrayUnion(event),
-      swipedEvents: arrayUnion(event.id)
+      swipedEvents: arrayUnion(...idsToMark)
     });
     return { success: true };
   } catch (error) {
@@ -238,12 +308,13 @@ export const saveEvent = async (userId, event) => {
   }
 };
 
-// Pass on an event (swipe left)
-export const passEvent = async (userId, eventId) => {
+// Pass on an event (swipe left) — supports grouped multi-date events
+export const passEvent = async (userId, eventId, groupedIds = null) => {
   try {
     const userRef = doc(db, 'users', userId);
+    const idsToMark = groupedIds || [eventId];
     await updateDoc(userRef, {
-      swipedEvents: arrayUnion(eventId)
+      swipedEvents: arrayUnion(...idsToMark)
     });
     return { success: true };
   } catch (error) {
@@ -484,6 +555,18 @@ export const getEvents = async (userId, location, filters = {}) => {
       });
       
       console.log(`After time filter: ${events.length} (removed ${beforeCount - events.length})`);
+    }
+    
+    // ========================================
+    // GROUP: Merge same event with multiple dates
+    // ========================================
+    {
+      const beforeCount = events.length;
+      events = groupMultiDateEvents(events);
+      const grouped = beforeCount - events.length;
+      if (grouped > 0) {
+        console.log(`After multi-date grouping: ${events.length} (merged ${grouped} duplicate dates)`);
+      }
     }
     
     // ========================================
