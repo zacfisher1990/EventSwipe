@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
-import { createEvent } from '../services/eventService';
+import { postEvent } from '../services/eventService';
 import i18n from '../i18n';
 
 // Geocode address to get coordinates using Nominatim
@@ -208,10 +208,11 @@ export default function PostEventScreen({ navigation }) {
     longitude: coords.longitude,
     // Use placeholder if no image selected
     image: image || `https://picsum.photos/400/300?random=${Date.now()}`,
+    // Pass local URI for upload by postEvent
+    imageUri: image,
   };
 
-  // Pass the local image URI to createEvent for upload
-  const result = await createEvent(eventData, user.uid, image);
+  const result = await postEvent(eventData, user.uid);
   
   setLoading(false);
 

@@ -10,6 +10,7 @@ export default {
     error: 'خطأ',
     success: 'نجاح',
     loading: 'جارٍ التحميل...',
+    searching: 'جارٍ البحث...',
     retry: 'إعادة المحاولة',
     yes: 'نعم',
     no: 'لا',
@@ -205,6 +206,16 @@ export default {
     thisMonth: 'هذا الشهر',
     threeMonths: '٣ أشهر',
     thisYear: 'هذا العام',
+    applyFilters: 'تطبيق التصفية',
+    mi: 'ميل',
+    when: 'متى',
+    change: 'تغيير',
+    all: 'الكل',
+    none: 'لا شيء',
+    useMyLocation: 'استخدام موقعي',
+    searchCity: 'البحث عن مدينة...',
+    tapToSetLocation: 'انقر لتحديد الموقع',
+    noResultsFound: 'لم يتم العثور على نتائج',
   },
 
   // Auth Screens
@@ -261,5 +272,7 @@ export default {
     weakPassword: 'يجب أن تتكون كلمة المرور من ٦ أحرف على الأقل.',
     tooManyRequests: 'محاولات كثيرة جداً. يرجى المحاولة لاحقاً.',
     networkFailed: 'خطأ في الشبكة. يرجى التحقق من اتصالك.',
+    locationFailed: 'تعذر الحصول على الموقع',
+    locationDenied: 'تم رفض إذن الموقع',
   },
 };

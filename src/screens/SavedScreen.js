@@ -58,7 +58,8 @@ export default function SavedScreen() {
 
   const loadSavedEvents = async () => {
     if (user?.uid) {
-      const events = await getSavedEvents(user.uid);
+      const result = await getSavedEvents(user.uid);
+      const events = result.success ? result.events : [];
       // Filter out past events and sort by date (soonest first)
       const upcomingEvents = filterAndSortEvents(events);
       setSavedEvents(upcomingEvents);

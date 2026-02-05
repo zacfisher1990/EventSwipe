@@ -27,7 +27,8 @@ export default function ProfileScreen() {
   const loadStats = async () => {
     if (!user?.uid) return;
     
-    const saved = await getSavedEvents(user.uid);
+    const savedResult = await getSavedEvents(user.uid);
+    const saved = savedResult.success ? savedResult.events : [];
     const swiped = await getSwipedEventIds(user.uid);
     
     setStats({

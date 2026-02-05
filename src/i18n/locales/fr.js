@@ -10,6 +10,7 @@ export default {
     error: 'Erreur',
     success: 'Succès',
     loading: 'Chargement...',
+    searching: 'Recherche...',
     retry: 'Réessayer',
     yes: 'Oui',
     no: 'Non',
@@ -205,6 +206,16 @@ export default {
     thisMonth: 'Ce mois-ci',
     threeMonths: '3 mois',
     thisYear: 'Cette année',
+    applyFilters: 'Appliquer les filtres',
+    mi: 'km',
+    when: 'Quand',
+    change: 'Changer',
+    all: 'Tous',
+    none: 'Aucun',
+    useMyLocation: 'Utiliser ma position',
+    searchCity: 'Rechercher une ville...',
+    tapToSetLocation: 'Appuie pour définir la position',
+    noResultsFound: 'Aucun résultat trouvé',
   },
 
   // Auth Screens
@@ -261,5 +272,7 @@ export default {
     weakPassword: 'Le mot de passe doit contenir au moins 6 caractères.',
     tooManyRequests: 'Trop de tentatives. Réessaie plus tard.',
     networkFailed: 'Erreur de connexion. Vérifie ta connexion internet.',
+    locationFailed: 'Impossible d\'obtenir la position',
+    locationDenied: 'Permission de localisation refusée',
   },
 };

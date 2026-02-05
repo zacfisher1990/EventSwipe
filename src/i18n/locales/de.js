@@ -10,6 +10,7 @@ export default {
     error: 'Fehler',
     success: 'Erfolg',
     loading: 'Lädt...',
+    searching: 'Suche...',
     retry: 'Erneut versuchen',
     yes: 'Ja',
     no: 'Nein',
@@ -205,6 +206,16 @@ export default {
     thisMonth: 'Diesen Monat',
     threeMonths: '3 Monate',
     thisYear: 'Dieses Jahr',
+    applyFilters: 'Filter anwenden',
+    mi: 'km',
+    when: 'Wann',
+    change: 'Ändern',
+    all: 'Alle',
+    none: 'Keine',
+    useMyLocation: 'Meinen Standort verwenden',
+    searchCity: 'Stadt suchen...',
+    tapToSetLocation: 'Tippe, um Standort festzulegen',
+    noResultsFound: 'Keine Ergebnisse gefunden',
   },
 
   // Auth Screens
@@ -261,5 +272,7 @@ export default {
     weakPassword: 'Passwort muss mindestens 6 Zeichen haben.',
     tooManyRequests: 'Zu viele Versuche. Bitte versuche es später erneut.',
     networkFailed: 'Verbindungsfehler. Bitte überprüfe deine Internetverbindung.',
+    locationFailed: 'Standort konnte nicht ermittelt werden',
+    locationDenied: 'Standortberechtigung verweigert',
   },
 };

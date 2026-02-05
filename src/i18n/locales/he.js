@@ -10,6 +10,7 @@ export default {
     error: 'שגיאה',
     success: 'הצלחה',
     loading: 'טוען...',
+    searching: 'מחפש...',
     retry: 'נסה שוב',
     yes: 'כן',
     no: 'לא',
@@ -205,6 +206,16 @@ export default {
     thisMonth: 'החודש',
     threeMonths: '3 חודשים',
     thisYear: 'השנה',
+    applyFilters: 'החל סינון',
+    mi: 'מייל',
+    when: 'מתי',
+    change: 'שנה',
+    all: 'הכל',
+    none: 'כלום',
+    useMyLocation: 'השתמש במיקום שלי',
+    searchCity: 'חפש עיר...',
+    tapToSetLocation: 'הקש להגדרת מיקום',
+    noResultsFound: 'לא נמצאו תוצאות',
   },
 
   // Auth Screens
@@ -261,5 +272,7 @@ export default {
     weakPassword: 'הסיסמה חייבת להכיל לפחות 6 תווים.',
     tooManyRequests: 'יותר מדי ניסיונות. נא לנסות שוב מאוחר יותר.',
     networkFailed: 'שגיאת רשת. נא לבדוק את החיבור שלך.',
+    locationFailed: 'לא ניתן לקבל מיקום',
+    locationDenied: 'הרשאת מיקום נדחתה',
   },
 };

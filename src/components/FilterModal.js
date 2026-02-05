@@ -66,9 +66,19 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const isClosing = useRef(false);
 
-  // Handle open/close animations
+  // Reset local state to parent filters and animate in when modal opens
   useEffect(() => {
     if (visible) {
+      // Sync local state with parent filters on every open
+      setDistance(filters?.distance || 25);
+      setTimeRange(filters?.timeRange || 'month');
+      setSelectedCategories(filters?.categories || CATEGORIES.map(c => c.id));
+      setLocation(filters?.location || null);
+      setIsCustomLocation(filters?.isCustomLocation || false);
+      setShowLocationSearch(false);
+      setSearchQuery('');
+      setSearchResults([]);
+
       isClosing.current = false;
       // Animate in
       Animated.parallel([
@@ -347,14 +357,34 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   };
 
   const handleApply = () => {
-    onApply({
+    const appliedFilters = {
       distance,
       timeRange,
       categories: selectedCategories,
       location,
       isCustomLocation,
+    };
+    
+    // Animate out, then apply filters
+    if (isClosing.current) return;
+    isClosing.current = true;
+    
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      translateY.setValue(SCREEN_HEIGHT);
+      onApply(appliedFilters);
+      onClose();
     });
-    onClose();
   };
 
   const handleReset = () => {

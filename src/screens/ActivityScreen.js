@@ -61,7 +61,8 @@ export default function ActivityScreen() {
     if (!user?.uid) return;
 
     // Load saved events (for upcoming reminders)
-    const saved = await getSavedEvents(user.uid);
+    const savedResult = await getSavedEvents(user.uid);
+    const saved = savedResult.success ? savedResult.events : [];
     
     // Filter to only future events and sort by date
     const now = new Date();
