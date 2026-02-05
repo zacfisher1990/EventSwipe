@@ -11,9 +11,8 @@ const db = admin.firestore();
 
 const ADMIN_EMAIL = 'support@proxtrades.com';
 
-// API Keys - set with: firebase functions:config:set ticketmaster.key="XXX" seatgeek.client_id="YYY"
+// API Keys - set with: firebase functions:config:set ticketmaster.key="XXX"
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
-const SEATGEEK_CLIENT_ID = process.env.SEATGEEK_CLIENT_ID;
 
 // Cache settings
 const CACHE_TTL_HOURS = 6;
@@ -176,31 +175,6 @@ const fetchTicketmaster = async (lat, lng, radius) => {
   }
 };
 
-// Fetch from SeatGeek
-const fetchSeatGeek = async (lat, lng, radius) => {
-  if (!SEATGEEK_CLIENT_ID) {
-    console.log('SeatGeek client ID not configured');
-    return [];
-  }
-
-  try {
-    const url = `https://api.seatgeek.com/2/events?client_id=${SEATGEEK_CLIENT_ID}&per_page=100&sort=datetime_local.asc&lat=${lat}&lon=${lng}&range=${radius}mi`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('SeatGeek API error:', data);
-      return [];
-    }
-
-    return (data.events || []).map(event => transformSeatGeekEvent(event));
-  } catch (error) {
-    console.error('SeatGeek fetch error:', error);
-    return [];
-  }
-};
-
 // Transform Ticketmaster event to standard format
 const transformTicketmasterEvent = (event) => {
   const venue = event._embedded?.venues?.[0];
@@ -254,58 +228,6 @@ const transformTicketmasterEvent = (event) => {
   };
 };
 
-// Transform SeatGeek event to standard format
-const transformSeatGeekEvent = (event) => {
-  const venue = event.venue || {};
-  const performers = event.performers || [];
-  const taxonomies = event.taxonomies || [];
-
-  // Get image from performers
-  let image = null;
-  for (const performer of performers) {
-    if (performer.image) {
-      image = performer.image;
-      break;
-    }
-  }
-
-  // Map category
-  const taxonomy = taxonomies[0]?.name?.toLowerCase() || '';
-  let category = 'other';
-  if (taxonomy.includes('comedy')) {
-    category = 'comedy';
-  } else if (taxonomy.includes('concert') || taxonomy.includes('music')) {
-    category = 'music';
-  } else if (taxonomy.includes('sport') || taxonomy.includes('nfl') || taxonomy.includes('nba') || taxonomy.includes('mlb')) {
-    category = 'sports';
-  } else if (taxonomy.includes('theater') || taxonomy.includes('broadway')) {
-    category = 'arts';
-  } else if (taxonomy.includes('family')) {
-    category = 'family';
-  }
-
-  const dateTimeLocal = event.datetime_local || '';
-
-  return {
-    id: `sg_${event.id}`,
-    title: event.title || event.short_title || '',
-    date: dateTimeLocal ? dateTimeLocal.split('T')[0] : '',
-    time: dateTimeLocal ? dateTimeLocal.split('T')[1]?.slice(0, 5) : '',
-    location: venue.name || '',
-    city: venue.city || '',
-    state: venue.state || '',
-    address: venue.address || '',
-    latitude: parseFloat(venue.location?.lat) || null,
-    longitude: parseFloat(venue.location?.lon) || null,
-    category: category,
-    price: event.stats?.lowest_price ? `$${event.stats.lowest_price}` : null,
-    image: image,
-    ticketUrl: event.url || '',
-    source: 'seatgeek',
-    venueName: venue.name || '',
-  };
-};
-
 /**
  * Main cached event fetching function
  * Called by the app to get events for a location
@@ -335,20 +257,15 @@ exports.getEventsForLocation = functions.https.onCall(async (data, context) => {
       };
     }
 
-    console.log(`Cache MISS for ${cacheKey}, fetching from APIs...`);
+    console.log(`Cache MISS for ${cacheKey}, fetching from Ticketmaster...`);
   } catch (cacheError) {
     console.error('Cache read error:', cacheError);
   }
 
-  // Fetch from both APIs in parallel
-  const [tmEvents, sgEvents] = await Promise.all([
-    fetchTicketmaster(latitude, longitude, radius),
-    fetchSeatGeek(latitude, longitude, radius),
-  ]);
+  // Fetch from Ticketmaster
+  const allEvents = await fetchTicketmaster(latitude, longitude, radius);
 
-  console.log(`Fetched ${tmEvents.length} from Ticketmaster, ${sgEvents.length} from SeatGeek`);
-
-  const allEvents = [...tmEvents, ...sgEvents];
+  console.log(`Fetched ${allEvents.length} events from Ticketmaster`);
 
   // Save to cache
   try {

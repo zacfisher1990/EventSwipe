@@ -15,9 +15,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
-// REMOVED: Direct API imports no longer needed
-// import { searchEvents as searchTicketmaster } from './ticketmasterService';
-// import { searchEvents as searchSeatGeek } from './seatgeekService';
+// API events are fetched via Cloud Function (getEventsForLocation)
 import i18n from '../i18n';
 
 // Initialize Cloud Functions
@@ -74,15 +72,15 @@ const isDuplicate = (event1, event2) => {
   return false;
 };
 
-// Remove duplicates, preferring Ticketmaster > SeatGeek > Firebase
+// Remove duplicates, preferring Ticketmaster > Firebase
 const deduplicateEvents = (events) => {
   const result = [];
   
-  // Sort by source priority: ticketmaster first, then seatgeek, then firebase
+  // Sort by source priority: ticketmaster first, then firebase
   const sorted = [...events].sort((a, b) => {
-    const priority = { ticketmaster: 0, seatgeek: 1, firebase: 2 };
-    const aPriority = priority[a.source] ?? 3;
-    const bPriority = priority[b.source] ?? 3;
+    const priority = { ticketmaster: 0, firebase: 1 };
+    const aPriority = priority[a.source] ?? 2;
+    const bPriority = priority[b.source] ?? 2;
     return aPriority - bPriority;
   });
   
