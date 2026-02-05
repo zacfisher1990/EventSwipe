@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,10 +10,15 @@ import {
   TextInput,
   ActivityIndicator,
   Keyboard,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
 import i18n from '../i18n';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const DISMISS_THRESHOLD = 150;
 
 // Categories with i18n keys
 const CATEGORIES = [
@@ -55,6 +60,106 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [isCustomLocation, setIsCustomLocation] = useState(filters?.isCustomLocation || false);
+
+  // Animation values for swipe-to-dismiss (matching EventDetailsModal approach)
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const isClosing = useRef(false);
+
+  // Handle open/close animations
+  useEffect(() => {
+    if (visible) {
+      isClosing.current = false;
+      // Animate in
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 200,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const handleClose = () => {
+    if (isClosing.current) return;
+    isClosing.current = true;
+    
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      translateY.setValue(SCREEN_HEIGHT);
+      onClose();
+    });
+  };
+
+  // Handle drag on the handle area (matching EventDetailsModal)
+  const handleDragStart = useRef({ y: 0 });
+  
+  const onHandleTouchStart = (e) => {
+    handleDragStart.current.y = e.nativeEvent.pageY;
+  };
+
+  const onHandleTouchMove = (e) => {
+    const currentY = e.nativeEvent.pageY;
+    const dy = currentY - handleDragStart.current.y;
+    
+    if (dy > 0) {
+      translateY.setValue(dy);
+      // Fade backdrop as we drag
+      const opacity = 1 - (dy / SCREEN_HEIGHT);
+      backdropOpacity.setValue(Math.max(0, opacity));
+    }
+  };
+
+  const onHandleTouchEnd = (e) => {
+    const currentY = e.nativeEvent.pageY;
+    const dy = currentY - handleDragStart.current.y;
+    
+    if (dy > DISMISS_THRESHOLD) {
+      handleClose();
+    } else {
+      // Snap back
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  };
+
+  // Handle scroll-based dismiss
+  const onScrollEndDrag = (e) => {
+    const offsetY = e.nativeEvent.contentOffset.y;
+    const velocityY = e.nativeEvent.velocity?.y || 0;
+    
+    // If at top and pulling down with velocity, dismiss
+    if (offsetY <= 0 && velocityY < -1.5) {
+      handleClose();
+    }
+  };
 
   useEffect(() => {
     if (visible && !location) {
@@ -263,26 +368,51 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent={true}
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.headerButton}>{i18n.t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{i18n.t('filters.title')}</Text>
-            <TouchableOpacity onPress={handleReset}>
-              <Text style={styles.headerButton}>{i18n.t('filters.reset')}</Text>
-            </TouchableOpacity>
+      <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
+        <TouchableOpacity 
+          style={styles.overlayTouchable} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+        <Animated.View 
+          style={[
+            styles.container,
+            { transform: [{ translateY }] }
+          ]}
+        >
+          {/* Swipeable header area - drag handle + header */}
+          <View
+            onTouchStart={onHandleTouchStart}
+            onTouchMove={onHandleTouchMove}
+            onTouchEnd={onHandleTouchEnd}
+          >
+            {/* Drag Handle */}
+            <View style={styles.dragHandleContainer}>
+              <View style={styles.dragHandle} />
+            </View>
+
+            <View style={styles.header}>
+              <TouchableOpacity onPress={handleClose}>
+                <Text style={styles.headerButton}>{i18n.t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{i18n.t('filters.title')}</Text>
+              <TouchableOpacity onPress={handleReset}>
+                <Text style={styles.headerButton}>{i18n.t('filters.reset')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView 
             style={styles.content} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            bounces={true}
+            scrollEventThrottle={16}
+            onScrollEndDrag={onScrollEndDrag}
           >
             {/* Location Section */}
             <View style={styles.section}>
@@ -313,21 +443,25 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                         style={styles.changeLocationButton}
                         onPress={() => setShowLocationSearch(true)}
                       >
-                        <Text style={styles.changeLocationText}>Change</Text>
+                        <Text style={styles.changeLocationText}>{i18n.t('filters.change')}</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : null}
+                  ) : (
+                    <TouchableOpacity onPress={requestLocation}>
+                      <Text style={styles.locationText}>{i18n.t('filters.tapToSetLocation')}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <View style={styles.locationSearch}>
                   <View style={styles.searchInputContainer}>
                     <TextInput
                       style={styles.searchInput}
-                      placeholder={i18n.t('filters.searchLocation')}
+                      placeholder={i18n.t('filters.searchCity')}
                       placeholderTextColor="#999"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
-                      autoFocus
+                      autoFocus={true}
                     />
                     {searchQuery.length > 0 && (
                       <TouchableOpacity 
@@ -338,25 +472,25 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                       </TouchableOpacity>
                     )}
                   </View>
-
+                  
                   <TouchableOpacity 
                     style={styles.useMyLocationButton}
                     onPress={useMyLocation}
                   >
                     <Text style={styles.useMyLocationIcon}>📍</Text>
-                    <Text style={styles.useMyLocationText}>{i18n.t('filters.useCurrentLocation')}</Text>
+                    <Text style={styles.useMyLocationText}>{i18n.t('filters.useMyLocation')}</Text>
                   </TouchableOpacity>
 
                   {searching ? (
                     <View style={styles.searchingContainer}>
                       <ActivityIndicator size="small" color="#4ECDC4" />
-                      <Text style={styles.searchingText}>{i18n.t('common.loading')}</Text>
+                      <Text style={styles.searchingText}>{i18n.t('common.searching')}</Text>
                     </View>
                   ) : searchResults.length > 0 ? (
                     <View style={styles.searchResults}>
-                      {searchResults.map(result => (
-                        <TouchableOpacity 
-                          key={result.id} 
+                      {searchResults.map((result) => (
+                        <TouchableOpacity
+                          key={result.id}
                           style={styles.searchResultItem}
                           onPress={() => selectSearchResult(result)}
                         >
@@ -366,7 +500,7 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                       ))}
                     </View>
                   ) : searchQuery.length >= 2 ? (
-                    <Text style={styles.noResultsText}>No locations found</Text>
+                    <Text style={styles.noResultsText}>{i18n.t('filters.noResultsFound')}</Text>
                   ) : null}
 
                   <TouchableOpacity 
@@ -391,9 +525,9 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
               </View>
               <Slider
                 style={styles.slider}
-                minimumValue={1}
+                minimumValue={5}
                 maximumValue={100}
-                step={1}
+                step={5}
                 value={distance}
                 onValueChange={setDistance}
                 minimumTrackTintColor="#4ECDC4"
@@ -401,16 +535,16 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                 thumbTintColor="#4ECDC4"
               />
               <View style={styles.sliderLabels}>
-                <Text style={styles.sliderLabel}>1 mi</Text>
-                <Text style={styles.sliderLabel}>100 mi</Text>
+                <Text style={styles.sliderLabel}>5 {i18n.t('filters.mi')}</Text>
+                <Text style={styles.sliderLabel}>100 {i18n.t('filters.mi')}</Text>
               </View>
             </View>
 
             {/* Time Range Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🗓️ {i18n.t('filters.timeRange')}</Text>
+              <Text style={styles.sectionTitle}>📅 {i18n.t('filters.when')}</Text>
               <View style={styles.timeGrid}>
-                {TIME_RANGES.map(range => (
+                {TIME_RANGES.map((range) => (
                   <TouchableOpacity
                     key={range.id}
                     style={[
@@ -419,10 +553,12 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                     ]}
                     onPress={() => setTimeRange(range.id)}
                   >
-                    <Text style={[
-                      styles.timeChipText,
-                      timeRange === range.id && styles.timeChipTextSelected,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.timeChipText,
+                        timeRange === range.id && styles.timeChipTextSelected,
+                      ]}
+                    >
                       {i18n.t(range.labelKey)}
                     </Text>
                   </TouchableOpacity>
@@ -433,19 +569,19 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
             {/* Categories Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>🎯 {i18n.t('filters.categories')}</Text>
+                <Text style={styles.sectionTitle}>🏷️ {i18n.t('filters.categories')}</Text>
                 <View style={styles.categoryActions}>
                   <TouchableOpacity onPress={selectAllCategories}>
-                    <Text style={styles.categoryAction}>All</Text>
+                    <Text style={styles.categoryAction}>{i18n.t('filters.all')}</Text>
                   </TouchableOpacity>
                   <Text style={styles.categoryActionDivider}>|</Text>
                   <TouchableOpacity onPress={clearAllCategories}>
-                    <Text style={styles.categoryAction}>None</Text>
+                    <Text style={styles.categoryAction}>{i18n.t('filters.none')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
               <View style={styles.categoryGrid}>
-                {CATEGORIES.map(category => (
+                {CATEGORIES.map((category) => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
@@ -455,27 +591,34 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                     onPress={() => toggleCategory(category.id)}
                   >
                     <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                    <Text style={[
-                      styles.categoryChipText,
-                      selectedCategories.includes(category.id) && styles.categoryChipTextSelected,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        selectedCategories.includes(category.id) && styles.categoryChipTextSelected,
+                      ]}
+                    >
                       {i18n.t(category.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
+
+            {/* Bottom spacing for scrolling */}
+            <View style={{ height: 20 }} />
           </ScrollView>
 
+          {/* Footer with Apply Button */}
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
-              <Text style={styles.applyButtonText}>
-                {i18n.t('filters.apply')}
-              </Text>
+            <TouchableOpacity 
+              style={styles.applyButton} 
+              onPress={handleApply}
+            >
+              <Text style={styles.applyButtonText}>{i18n.t('filters.applyFilters')}</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -486,17 +629,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  overlayTouchable: {
+    flex: 1,
+  },
   container: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
   },
+  dragHandleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Large touch area for easier swiping
+    paddingTop: 16,
+    paddingBottom: 16,
+    minHeight: 44,
+  },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#DDDDDD',
+    borderRadius: 3,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    paddingTop: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
