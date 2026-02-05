@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Переглянути квитки',
     untitledEvent: 'Подія без назви',
     venueTBA: 'Місце уточнюється',
+    shareCheckOut: 'Подивись цю подію!',
+    shareGetTickets: 'Купити квитки',
+    shareFoundOn: 'Знайдено в EventSwipe',
   },
 
   // Report Modal

@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Смотреть билеты',
     untitledEvent: 'Событие без названия',
     venueTBA: 'Место уточняется',
+    shareCheckOut: 'Посмотри это событие!',
+    shareGetTickets: 'Купить билеты',
+    shareFoundOn: 'Найдено в EventSwipe',
   },
 
   // Report Modal

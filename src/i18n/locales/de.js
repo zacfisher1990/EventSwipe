@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Tickets ansehen',
     untitledEvent: 'Unbenanntes Event',
     venueTBA: 'Ort folgt',
+    shareCheckOut: 'Schau dir dieses Event an!',
+    shareGetTickets: 'Tickets holen',
+    shareFoundOn: 'Entdeckt auf EventSwipe',
   },
 
   // Report Modal

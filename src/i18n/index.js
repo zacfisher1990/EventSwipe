@@ -9,6 +9,13 @@ import de from './locales/de';
 import fr from './locales/fr';
 import ru from './locales/ru';
 import uk from './locales/uk';
+import it from './locales/it';
+import pl from './locales/pl';
+import ja from './locales/ja';
+import ko from './locales/ko';
+import th from './locales/th';
+import zhHant from './locales/zh-Hant';
+import zhHans from './locales/zh-Hans';
 
 const i18n = new I18n({
   en,
@@ -20,6 +27,19 @@ const i18n = new I18n({
   fr,
   ru,
   uk,
+  it,
+  pl,
+  ja,
+  ko,
+  th,
+  'zh-Hant': zhHant,
+  'zh-Hans': zhHans,
+  'zh-TW': zhHant,
+  'zh-HK': zhHant,
+  'zh-MO': zhHant,
+  'zh-CN': zhHans,
+  'zh-SG': zhHans,
+  zh: zhHans,
 });
 
 // Set the locale based on device settings

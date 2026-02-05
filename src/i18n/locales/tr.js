@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Biletleri gör',
     untitledEvent: 'İsimsiz Etkinlik',
     venueTBA: 'Mekan belirlenecek',
+    shareCheckOut: 'Bu etkinliğe göz at!',
+    shareGetTickets: 'Bilet al',
+    shareFoundOn: 'EventSwipe\'da keşfedildi',
   },
 
   // Report Modal

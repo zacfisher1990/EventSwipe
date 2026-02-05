@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Lihat tiket',
     untitledEvent: 'Event Tanpa Judul',
     venueTBA: 'Tempat menyusul',
+    shareCheckOut: 'Lihat event ini!',
+    shareGetTickets: 'Beli tiket',
+    shareFoundOn: 'Ditemukan di EventSwipe',
   },
 
   // Report Modal

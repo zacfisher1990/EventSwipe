@@ -163,6 +163,9 @@ export default {
     seeTickets: 'Ver entradas',
     untitledEvent: 'Evento Sin Título',
     venueTBA: 'Lugar por confirmar',
+    shareCheckOut: '¡Mira este evento!',
+    shareGetTickets: 'Conseguir entradas',
+    shareFoundOn: 'Descubierto en EventSwipe',
   },
 
   // Report Modal

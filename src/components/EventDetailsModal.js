@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Share,
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
@@ -367,6 +368,27 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
     );
   };
 
+  const handleShare = async () => {
+    try {
+      let message = `${i18n.t('eventDetails.shareCheckOut')}\n\n🎉 ${event.title}`;
+      if (event.date) message += `\n📅 ${event.date}`;
+      if (event.time) message += ` • ${event.time}`;
+      if (event.location) message += `\n📍 ${event.location}`;
+      if (event.ticketUrl) message += `\n\n🎟️ ${i18n.t('eventDetails.shareGetTickets')}: ${event.ticketUrl}`;
+      message += `\n\n${i18n.t('eventDetails.shareFoundOn')}`;
+
+      await Share.share({
+        message,
+        title: event.title,
+      });
+    } catch (error) {
+      // User cancelled share - no action needed
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing event:', error);
+      }
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -403,13 +425,21 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
           <View style={styles.swipeBar} />
         </View>
 
-        {/* Report button in top right */}
-        <TouchableOpacity 
-          style={styles.reportButton}
-          onPress={() => setReportModalVisible(true)}
-        >
-          <Ionicons name="flag-outline" size={20} color="#666" />
-        </TouchableOpacity>
+        {/* Share & Report buttons in top right */}
+        <View style={styles.topRightButtons}>
+          <TouchableOpacity 
+            style={styles.topButton}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.topButton}
+            onPress={() => setReportModalVisible(true)}
+          >
+            <Ionicons name="flag-outline" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
 
         <ScrollView 
           style={styles.content} 
@@ -578,11 +608,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#ddd',
     borderRadius: 3,
   },
-  reportButton: {
+  topRightButtons: {
     position: 'absolute',
     top: 12,
     right: 16,
     zIndex: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  topButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
