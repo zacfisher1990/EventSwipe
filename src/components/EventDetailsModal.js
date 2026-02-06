@@ -464,7 +464,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             <View style={styles.categoryTag}>
               <Text style={styles.categoryText}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
             </View>
-            {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
+            {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
               <TouchableOpacity style={styles.priceTag} onPress={handleGetTickets}>
                 <Text style={styles.priceText}>{event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets')}</Text>
               </TouchableOpacity>
@@ -506,7 +506,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
           ) : (
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
-              <Text style={styles.infoText}>{event.date} • {event.time}</Text>
+              <Text style={styles.infoText}>{event.date}{event.time ? ` • ${event.time}` : ''}</Text>
             </View>
           )}
 

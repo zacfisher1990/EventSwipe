@@ -166,7 +166,7 @@ export default function HomeScreen() {
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>
-            {(event.source === 'ticketmaster' || event.source === 'seatgeek') && (
+            {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
               <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
                 <Text style={styles.ticketButtonText}>
                   {event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets')}
@@ -183,11 +183,11 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <Text style={styles.date}>
-                {i18n.t('discover.nextDate', { defaultValue: 'Next' })}: {event.date} • {event.time}
+                {i18n.t('discover.nextDate', { defaultValue: 'Next' })}: {event.date}{event.time ? ` • ${event.time}` : ''}
               </Text>
             </View>
           ) : (
-            <Text style={styles.date}>{event.date} • {event.time}</Text>
+            <Text style={styles.date}>{event.date}{event.time ? ` • ${event.time}` : ''}</Text>
           )}
           <Text style={styles.location} numberOfLines={1}>{event.location}</Text>
           {event.price && event.price !== 'See tickets' && (
