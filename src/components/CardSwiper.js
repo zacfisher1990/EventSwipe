@@ -43,8 +43,9 @@ const CardSwiper = forwardRef(function CardSwiper({
     onCardTapRef.current = onCardTap;
   }, [onCardTap]);
 
-  // Position is now reset in swipeOffScreen BEFORE index update
-  // to prevent the background card flash
+  useEffect(() => {
+    position.setValue({ x: 0, y: 0 });
+  }, [currentIndex]);
 
   const resetPosition = useCallback(() => {
     Animated.spring(position, {
@@ -68,9 +69,6 @@ const CardSwiper = forwardRef(function CardSwiper({
     }).start(() => {
       const item = cardsRef.current[currentIndexRef.current];
       const index = currentIndexRef.current;
-      
-      // Reset position BEFORE updating index to prevent background card flash
-      position.setValue({ x: 0, y: 0 });
       
       setCurrentIndex(prev => {
         const next = prev + 1;
