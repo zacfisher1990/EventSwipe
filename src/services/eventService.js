@@ -10,7 +10,8 @@ import {
   where,
   orderBy,
   Timestamp,
-  deleteDoc 
+  deleteDoc,
+  deleteField 
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
@@ -641,6 +642,72 @@ export const deleteEvent = async (eventId, userId) => {
     return { success: true };
   } catch (error) {
     console.error('Error deleting event:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update an existing event (only allowed by the poster)
+export const updateEvent = async (eventId, eventData, userId) => {
+  try {
+    const eventRef = doc(db, 'events', eventId);
+    const eventDoc = await getDoc(eventRef);
+
+    if (!eventDoc.exists()) {
+      return { success: false, error: i18n.t('errors.eventNotFound') };
+    }
+
+    if (eventDoc.data().posterId !== userId) {
+      return { success: false, error: i18n.t('errors.cannotEditOthers', { defaultValue: 'You can only edit your own events' }) };
+    }
+
+    // Upload new image if user picked a new local file
+    let imageUrl = eventData.image;
+    if (eventData.imageUri && eventData.imageUri.startsWith('file://')) {
+      const uploadResult = await uploadEventImage(eventData.imageUri, userId);
+      if (uploadResult.success) {
+        imageUrl = uploadResult.url;
+      } else {
+        console.error('Image upload failed, keeping existing image:', uploadResult.error);
+        imageUrl = eventDoc.data().image;
+      }
+    }
+
+    const updatedData = {
+      title: eventData.title,
+      description: eventData.description,
+      date: eventData.date,
+      time: eventData.time,
+      location: eventData.location,
+      address: eventData.address,
+      category: eventData.category,
+      ticketUrl: eventData.ticketUrl || '',
+      price: eventData.price,
+      latitude: eventData.latitude,
+      longitude: eventData.longitude,
+      image: imageUrl,
+      updatedAt: Timestamp.now(),
+    };
+
+    // Handle multi-date fields
+    if (eventData.hasMultipleDates && eventData.allDates) {
+      updatedData.allDates = eventData.allDates;
+      updatedData.hasMultipleDates = true;
+      updatedData.dateCount = eventData.allDates.length;
+    } else {
+      // Remove multi-date fields if switching to single date
+      updatedData.allDates = deleteField();
+      updatedData.hasMultipleDates = deleteField();
+      updatedData.dateCount = deleteField();
+    }
+
+    // Clean up imageUri before saving
+    delete updatedData.imageUri;
+
+    await updateDoc(eventRef, updatedData);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating event:', error);
     return { success: false, error: error.message };
   }
 };

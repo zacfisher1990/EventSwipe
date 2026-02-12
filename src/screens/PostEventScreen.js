@@ -1,10 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
   Alert,
@@ -16,31 +17,58 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
-import { postEvent } from '../services/eventService';
+import { postEvent, updateEvent } from '../services/eventService';
 import i18n from '../i18n';
 
-// Search addresses using Nominatim (returns multiple results for suggestions)
+// Search addresses using Nominatim (native) or Photon (web, CORS-friendly)
+// Both use OpenStreetMap data
 const searchAddresses = async (query) => {
   if (!query || query.length < 3) return [];
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'EventSwipe/1.0',
-        },
+    if (Platform.OS === 'web') {
+      // Photon API supports CORS, safe for browser use
+      const response = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`
+      );
+      const data = await response.json();
+
+      if (data && data.features && data.features.length > 0) {
+        return data.features.map(f => {
+          const p = f.properties;
+          // Build street portion: "73 E 500 N" or just street name
+          const streetPart = [p.housenumber, p.street].filter(Boolean).join(' ');
+          // Avoid duplicating name with street (Photon sometimes puts street in name)
+          const namePart = (p.name && p.name !== p.street && p.name !== streetPart) ? p.name : null;
+          const parts = [namePart, streetPart, p.city, p.state, p.country].filter(Boolean);
+          return {
+            displayName: parts.join(', ') || 'Unknown location',
+            latitude: f.geometry.coordinates[1],
+            longitude: f.geometry.coordinates[0],
+          };
+        });
       }
-    );
-    const results = await response.json();
-    
-    if (results && results.length > 0) {
-      return results.map(r => ({
-        displayName: r.display_name,
-        latitude: parseFloat(r.lat),
-        longitude: parseFloat(r.lon),
-      }));
+      return [];
+    } else {
+      // Nominatim for native (no CORS restrictions)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'EventSwipe/1.0',
+          },
+        }
+      );
+      const results = await response.json();
+
+      if (results && results.length > 0) {
+        return results.map(r => ({
+          displayName: r.display_name,
+          latitude: parseFloat(r.lat),
+          longitude: parseFloat(r.lon),
+        }));
+      }
+      return [];
     }
-    return [];
   } catch (error) {
     console.error('Address search error:', error);
     return [];
@@ -61,7 +89,10 @@ const getCategories = () => [
   { id: 'outdoor', label: i18n.t('categories.outdoor'), emoji: '🏕️' },
 ];
 
-export default function PostEventScreen({ navigation }) {
+export default function PostEventScreen({ navigation, route }) {
+  const editEvent = route?.params?.editEvent || null;
+  const isEditing = !!editEvent;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dates, setDates] = useState([
@@ -86,6 +117,74 @@ export default function PostEventScreen({ navigation }) {
 
   const { user } = useAuth();
   const addressDebounceRef = useRef(null);
+
+  // Pre-fill form when editing an existing event
+  useEffect(() => {
+    if (editEvent) {
+      setTitle(editEvent.title || '');
+      setDescription(editEvent.description || '');
+      setLocation(editEvent.location || '');
+      setCategory(editEvent.category || '');
+      setTicketUrl(editEvent.ticketUrl || '');
+      setPrice(editEvent.price === i18n.t('common.free') ? '' : (editEvent.price || ''));
+      setImage(editEvent.image || null);
+
+      // Pre-fill address
+      if (editEvent.address) {
+        setAddress(editEvent.address);
+        setConfirmedAddress({
+          displayName: editEvent.address,
+          latitude: editEvent.latitude || 0,
+          longitude: editEvent.longitude || 0,
+        });
+      }
+
+      // Pre-fill dates
+      if (editEvent.hasMultipleDates && editEvent.allDates) {
+        const parsedDates = editEvent.allDates.map((d, idx) => {
+          const dateParts = d.date.split('-').map(Number);
+          const timeParts = (d.time || '00:00').split(':').map(Number);
+          const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+          const timeObj = new Date();
+          timeObj.setHours(timeParts[0], timeParts[1], 0, 0);
+          return {
+            id: idx + 1,
+            date: dateObj,
+            time: timeObj,
+            dateSelected: true,
+            timeSelected: true,
+          };
+        });
+        setDates(parsedDates);
+      } else if (editEvent.date) {
+        // Single date
+        const dateParts = editEvent.date.includes('-')
+          ? editEvent.date.split('-').map(Number)
+          : editEvent.date.includes('/')
+            ? (() => { const [m, d, y] = editEvent.date.split('/').map(Number); return [y, m, d]; })()
+            : null;
+        const timeParts = (editEvent.time || '00:00').split(':').map(Number);
+
+        if (dateParts) {
+          const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+          const timeObj = new Date();
+          timeObj.setHours(timeParts[0], timeParts[1], 0, 0);
+          setDates([{
+            id: 1,
+            date: dateObj,
+            time: timeObj,
+            dateSelected: true,
+            timeSelected: true,
+          }]);
+        }
+      }
+    }
+  }, [editEvent]);
+
+  // Dismiss address suggestions (called when other inputs gain focus)
+  const dismissSuggestions = useCallback(() => {
+    setShowSuggestions(false);
+  }, []);
 
   // Format date for display (e.g., "Jan 15, 2025")
   const formatDateDisplay = (date) => {
@@ -254,7 +353,7 @@ export default function PostEventScreen({ navigation }) {
   
   // Validate all date entries have both date and time selected
   const completeDates = dates.filter(d => d.dateSelected && d.timeSelected);
-  if (!title || completeDates.length === 0 || !location || !category) {
+  if (!title || completeDates.length === 0 || !category) {
     setError(i18n.t('postEvent.fillRequired'));
     return;
   }
@@ -318,7 +417,9 @@ export default function PostEventScreen({ navigation }) {
     }),
   };
 
-  const result = await postEvent(eventData, user.uid);
+  const result = isEditing
+    ? await updateEvent(editEvent.id, eventData, user.uid)
+    : await postEvent(eventData, user.uid);
   
   setLoading(false);
 
@@ -332,7 +433,11 @@ export default function PostEventScreen({ navigation }) {
   const handleSuccessDone = () => {
     resetForm();
     setSuccess(false);
-    navigation.navigate('Discover');
+    if (isEditing) {
+      navigation.navigate('Activity');
+    } else {
+      navigation.navigate('Discover');
+    }
   };
 
   const handlePostAnother = () => {
@@ -345,17 +450,25 @@ export default function PostEventScreen({ navigation }) {
     return (
       <View style={styles.successContainer}>
         <View style={styles.successContent}>
-          <Text style={styles.successEmoji}>🎉</Text>
-          <Text style={styles.successTitle}>{i18n.t('postEvent.eventPosted')}</Text>
+          <Text style={styles.successEmoji}>{isEditing ? '✅' : '🎉'}</Text>
+          <Text style={styles.successTitle}>
+            {isEditing
+              ? i18n.t('postEvent.eventUpdated', { defaultValue: 'Event Updated!' })
+              : i18n.t('postEvent.eventPosted')}
+          </Text>
           <Text style={styles.successText}>
-            {i18n.t('postEvent.eventPostedText')}
+            {isEditing
+              ? i18n.t('postEvent.eventUpdatedText', { defaultValue: 'Your event has been updated successfully.' })
+              : i18n.t('postEvent.eventPostedText')}
           </Text>
           <TouchableOpacity style={styles.successButton} onPress={handleSuccessDone}>
             <Text style={styles.successButtonText}>{i18n.t('postEvent.viewEvents')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
-            <Text style={styles.secondaryButtonText}>{i18n.t('postEvent.postAnother')}</Text>
-          </TouchableOpacity>
+          {!isEditing && (
+            <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
+              <Text style={styles.secondaryButtonText}>{i18n.t('postEvent.postAnother')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -367,7 +480,11 @@ export default function PostEventScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
           <Ionicons name="close" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{i18n.t('postEvent.title')}</Text>
+        <Text style={styles.headerTitle}>
+          {isEditing
+            ? i18n.t('postEvent.editTitle', { defaultValue: 'Edit Event' })
+            : i18n.t('postEvent.title')}
+        </Text>
         <TouchableOpacity 
           onPress={handleSubmit} 
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -376,12 +493,16 @@ export default function PostEventScreen({ navigation }) {
           {loading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.submitText}>{i18n.t('postEvent.post')}</Text>
+            <Text style={styles.submitText}>
+              {isEditing
+                ? i18n.t('postEvent.save', { defaultValue: 'Save' })
+                : i18n.t('postEvent.post')}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onScrollBeginDrag={() => setShowSuggestions(false)}>
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
@@ -409,6 +530,7 @@ export default function PostEventScreen({ navigation }) {
             placeholderTextColor="#999"
             value={title}
             onChangeText={setTitle}
+            onFocus={dismissSuggestions}
           />
         </View>
 
@@ -421,6 +543,7 @@ export default function PostEventScreen({ navigation }) {
             placeholderTextColor="#999"
             value={description}
             onChangeText={setDescription}
+            onFocus={dismissSuggestions}
             multiline
             numberOfLines={4}
           />
@@ -546,13 +669,14 @@ export default function PostEventScreen({ navigation }) {
 
         {/* Location */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>{i18n.t('postEvent.venueName')} *</Text>
+          <Text style={styles.label}>{i18n.t('postEvent.venueName')}</Text>
           <TextInput
             style={styles.input}
             placeholder={i18n.t('postEvent.venueNamePlaceholder')}
             placeholderTextColor="#999"
             value={location}
             onChangeText={setLocation}
+            onFocus={dismissSuggestions}
           />
         </View>
 
@@ -586,10 +710,6 @@ export default function PostEventScreen({ navigation }) {
                   onFocus={() => {
                     if (addressSuggestions.length > 0) setShowSuggestions(true);
                   }}
-                  onBlur={() => {
-                    // Small delay so tap on suggestion registers before hiding
-                    setTimeout(() => setShowSuggestions(false), 200);
-                  }}
                 />
                 {searchingAddress && (
                   <ActivityIndicator size="small" color="#4ECDC4" style={styles.addressSpinner} />
@@ -602,15 +722,15 @@ export default function PostEventScreen({ navigation }) {
                 </Text>
               )}
 
-              {/* Suggestions dropdown */}
               {showSuggestions && addressSuggestions.length > 0 && (
                 <View style={styles.suggestionsContainer}>
                   {addressSuggestions.map((suggestion, index) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={index}
-                      style={[
+                      style={({ pressed }) => [
                         styles.suggestionItem,
                         index < addressSuggestions.length - 1 && styles.suggestionBorder,
+                        pressed && { backgroundColor: '#f5f5f5' },
                       ]}
                       onPress={() => selectAddressSuggestion(suggestion)}
                     >
@@ -618,7 +738,7 @@ export default function PostEventScreen({ navigation }) {
                       <Text style={styles.suggestionText} numberOfLines={2}>
                         {suggestion.displayName}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               )}
@@ -662,6 +782,7 @@ export default function PostEventScreen({ navigation }) {
             placeholderTextColor="#999"
             value={price}
             onChangeText={setPrice}
+            onFocus={dismissSuggestions}
           />
         </View>
 
@@ -674,6 +795,7 @@ export default function PostEventScreen({ navigation }) {
             placeholderTextColor="#999"
             value={ticketUrl}
             onChangeText={setTicketUrl}
+            onFocus={dismissSuggestions}
             autoCapitalize="none"
             keyboardType="url"
           />
@@ -869,7 +991,8 @@ const styles = StyleSheet.create({
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 14,
+    padding: 16,
+    minHeight: 48,
     gap: 10,
   },
   suggestionBorder: {

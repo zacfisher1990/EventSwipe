@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getUserEvents, getSavedEvents, unsaveEvent, deleteEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
@@ -56,6 +56,7 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { user } = useAuth();
+  const navigation = useNavigation();
 
   const loadData = async () => {
     if (!user?.uid) return;
@@ -120,6 +121,11 @@ export default function ActivityScreen() {
         Alert.alert(i18n.t('common.error'), result.error || i18n.t('errors.generic'));
       }
     }
+  };
+
+  const handleEditEvent = (event) => {
+    setSelectedEvent(null);
+    navigation.navigate('Post', { editEvent: event });
   };
 
   const getDaysUntil = (dateString) => {
@@ -279,6 +285,7 @@ export default function ActivityScreen() {
         isSavedView={activeTab === 'upcoming'}
         isOwner={activeTab === 'posted'}
         onDelete={handleDeleteEvent}
+        onEdit={handleEditEvent}
       />
     </View>
   );

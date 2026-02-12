@@ -6,6 +6,7 @@ import {
   PanResponder,
   Dimensions,
   Text,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import i18n from '../i18n';
 
@@ -22,10 +23,8 @@ const CardSwiper = forwardRef(function CardSwiper({
   onCardTap,
 }, ref) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const swipeInProgress = useRef(false);
-  const tapStart = useRef({ x: 0, y: 0, time: 0 });
 
   const currentIndexRef = useRef(currentIndex);
   const cardsRef = useRef(cards);
@@ -42,10 +41,6 @@ const CardSwiper = forwardRef(function CardSwiper({
   useEffect(() => {
     onCardTapRef.current = onCardTap;
   }, [onCardTap]);
-
-  useEffect(() => {
-    position.setValue({ x: 0, y: 0 });
-  }, [currentIndex]);
 
   const resetPosition = useCallback(() => {
     Animated.spring(position, {
@@ -70,6 +65,11 @@ const CardSwiper = forwardRef(function CardSwiper({
       const item = cardsRef.current[currentIndexRef.current];
       const index = currentIndexRef.current;
       
+      // Reset position BEFORE updating index — this ensures when React
+      // re-renders with the new index, position is already at 0 so the
+      // new top card doesn't flash at the old swiped-off position
+      position.setValue({ x: 0, y: 0 });
+
       setCurrentIndex(prev => {
         const next = prev + 1;
         if (next >= cardsRef.current.length) {
@@ -108,37 +108,20 @@ const CardSwiper = forwardRef(function CardSwiper({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // Don't claim touch on start — let child buttons (tickets, etc.) receive taps
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture) => {
-        return Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5;
+        // Only claim when user is clearly dragging
+        return Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8;
       },
-      onPanResponderGrant: (evt) => {
-        setIsDragging(true);
-        tapStart.current = {
-          x: evt.nativeEvent.pageX,
-          y: evt.nativeEvent.pageY,
-          time: Date.now(),
-        };
-      },
+      onPanResponderGrant: () => {},
       onPanResponderMove: (_, gesture) => {
         if (!swipeInProgress.current) {
           position.setValue({ x: gesture.dx, y: gesture.dy * 0.5 });
         }
       },
       onPanResponderRelease: (evt, gesture) => {
-        setIsDragging(false);
         if (swipeInProgress.current) return;
-
-        const dx = evt.nativeEvent.pageX - tapStart.current.x;
-        const dy = evt.nativeEvent.pageY - tapStart.current.y;
-        const duration = Date.now() - tapStart.current.time;
-        
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && duration < 200) {
-          const currentCard = cardsRef.current[currentIndexRef.current];
-          onCardTapRef.current?.(currentCard);
-          resetPositionRef.current();
-          return;
-        }
 
         if (gesture.dx > SWIPE_THRESHOLD || gesture.vx > 0.5) {
           swipeOffScreenRef.current('right');
@@ -169,30 +152,6 @@ const CardSwiper = forwardRef(function CardSwiper({
     extrapolate: 'clamp',
   });
 
-  const nextCardScale = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: [1, 0.95, 1],
-    extrapolate: 'clamp',
-  });
-
-  const nextCardTranslateY = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: [0, 10, 0],
-    extrapolate: 'clamp',
-  });
-
-  const thirdCardScale = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: [0.95, 0.9, 0.95],
-    extrapolate: 'clamp',
-  });
-
-  const thirdCardTranslateY = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: [10, 20, 10],
-    extrapolate: 'clamp',
-  });
-
   const renderCards = () => {
     if (currentIndex >= cards.length) {
       return null;
@@ -200,87 +159,58 @@ const CardSwiper = forwardRef(function CardSwiper({
 
     const cardElements = [];
 
-    for (let i = Math.min(2, cards.length - currentIndex - 1); i >= 0; i--) {
+    for (let i = Math.min(1, cards.length - currentIndex - 1); i >= 0; i--) {
       const actualIndex = currentIndex + i;
       const item = cards[actualIndex];
       
       if (!item) continue;
 
-      if (i === 2) {
-        cardElements.push(
-          <Animated.View
-            key={`card-${actualIndex}-${item.id || actualIndex}`}
-            style={[
-              styles.cardContainer,
-              {
-                transform: [
-                  { scale: thirdCardScale },
-                  { translateY: thirdCardTranslateY },
-                ],
-                zIndex: 1,
-              },
-            ]}
+      const isTopCard = i === 0;
+
+      cardElements.push(
+        <Animated.View
+          key={`card-${actualIndex}-${item.id || actualIndex}`}
+          style={[
+            styles.cardContainer,
+            isTopCard
+              ? {
+                  transform: [
+                    { translateX: position.x },
+                    { translateY: position.y },
+                    { rotate },
+                  ],
+                  zIndex: 3,
+                }
+              : {
+                  zIndex: 2,
+                },
+          ]}
+          {...(isTopCard ? panResponder.panHandlers : {})}
+        >
+          <TouchableWithoutFeedback
+            onPress={isTopCard ? () => {
+              const currentCard = cardsRef.current[currentIndexRef.current];
+              onCardTapRef.current?.(currentCard);
+            } : undefined}
           >
-            {renderCard(item, actualIndex)}
+            <View style={styles.cardTouchable}>
+              {renderCard(item, actualIndex)}
+            </View>
+          </TouchableWithoutFeedback>
+
+          <Animated.View pointerEvents="none" style={[styles.overlay, styles.overlayLeft, { opacity: isTopCard ? nopeOpacity : 0 }]}>
+            <View style={[styles.labelBox, styles.nopeBox]}>
+              <Text style={styles.labelText}>{i18n.t('swipe.nope')}</Text>
+            </View>
           </Animated.View>
-        );
-      }
-      else if (i === 1) {
-        cardElements.push(
-          <Animated.View
-            key={`card-${actualIndex}-${item.id || actualIndex}`}
-            style={[
-              styles.cardContainer,
-              {
-                transform: [
-                  { scale: nextCardScale },
-                  { translateY: nextCardTranslateY },
-                ],
-                zIndex: 2,
-              },
-            ]}
-          >
-            {renderCard(item, actualIndex)}
+
+          <Animated.View pointerEvents="none" style={[styles.overlay, styles.overlayRight, { opacity: isTopCard ? likeOpacity : 0 }]}>
+            <View style={[styles.labelBox, styles.likeBox]}>
+              <Text style={styles.labelText}>{i18n.t('swipe.save')}</Text>
+            </View>
           </Animated.View>
-        );
-      }
-      else if (i === 0) {
-        cardElements.push(
-          <Animated.View
-            key={`card-${actualIndex}-${item.id || actualIndex}`}
-            style={[
-              styles.cardContainer,
-              {
-                transform: [
-                  { translateX: position.x },
-                  { translateY: position.y },
-                  { rotate },
-                ],
-                zIndex: 3,
-              },
-            ]}
-            {...panResponder.panHandlers}
-          >
-            {renderCard(item, actualIndex)}
-            
-            {isDragging && (
-              <Animated.View style={[styles.overlay, styles.overlayLeft, { opacity: nopeOpacity }]}>
-                <View style={[styles.labelBox, styles.nopeBox]}>
-                  <Text style={styles.labelText}>{i18n.t('swipe.nope')}</Text>
-                </View>
-              </Animated.View>
-            )}
-            
-            {isDragging && (
-              <Animated.View style={[styles.overlay, styles.overlayRight, { opacity: likeOpacity }]}>
-                <View style={[styles.labelBox, styles.likeBox]}>
-                  <Text style={styles.labelText}>{i18n.t('swipe.save')}</Text>
-                </View>
-              </Animated.View>
-            )}
-          </Animated.View>
-        );
-      }
+        </Animated.View>
+      );
     }
 
     return cardElements;
@@ -302,6 +232,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     padding: 16,
+  },
+  cardTouchable: {
+    flex: 1,
   },
   overlay: {
     position: 'absolute',

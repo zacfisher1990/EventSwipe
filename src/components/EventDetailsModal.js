@@ -199,7 +199,7 @@ function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
 }
 
 // Main EventDetailsModal Component
-export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport, isOwner = false, onDelete }) {
+export default function EventDetailsModal({ visible, event, onClose, onSave, onPass, isSavedView = false, onReport, isOwner = false, onDelete, onEdit }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -546,7 +546,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
         {/* Action Bar */}
         <View style={styles.actionBar}>
           {isOwner ? (
-            // Delete and Close buttons for owner's events
+            // Delete, Edit, and Close buttons for owner's events
             <>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.deleteButton]}
@@ -558,6 +558,18 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
                 ) : (
                   <Ionicons name="trash-outline" size={28} color="#FF6B6B" />
                 )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.editButton]}
+                onPress={() => {
+                  if (onEdit) {
+                    onEdit(event);
+                    handleClose();
+                  }
+                }}
+              >
+                <Ionicons name="create-outline" size={28} color="#4ECDC4" />
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -866,6 +878,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#FF6B6B',
+  },
+  editButton: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#4ECDC4',
   },
 });
 
