@@ -1,11 +1,10 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
   TouchableOpacity,
-  Pressable,
   ScrollView,
   Image,
   Alert,
@@ -20,58 +19,40 @@ import { useAuth } from '../context/AuthContext';
 import { postEvent, updateEvent } from '../services/eventService';
 import i18n from '../i18n';
 
-// Search addresses using Nominatim (native) or Photon (web, CORS-friendly)
-// Both use OpenStreetMap data
-const searchAddresses = async (query) => {
-  if (!query || query.length < 3) return [];
+// Geocode an address to get coordinates (called at submit time)
+const geocodeAddress = async (query) => {
+  if (!query || query.trim().length < 3) return null;
   try {
     if (Platform.OS === 'web') {
-      // Photon API supports CORS, safe for browser use
       const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`
       );
       const data = await response.json();
-
       if (data && data.features && data.features.length > 0) {
-        return data.features.map(f => {
-          const p = f.properties;
-          // Build street portion: "73 E 500 N" or just street name
-          const streetPart = [p.housenumber, p.street].filter(Boolean).join(' ');
-          // Avoid duplicating name with street (Photon sometimes puts street in name)
-          const namePart = (p.name && p.name !== p.street && p.name !== streetPart) ? p.name : null;
-          const parts = [namePart, streetPart, p.city, p.state, p.country].filter(Boolean);
-          return {
-            displayName: parts.join(', ') || 'Unknown location',
-            latitude: f.geometry.coordinates[1],
-            longitude: f.geometry.coordinates[0],
-          };
-        });
+        const f = data.features[0];
+        return {
+          latitude: f.geometry.coordinates[1],
+          longitude: f.geometry.coordinates[0],
+        };
       }
-      return [];
+      return null;
     } else {
-      // Nominatim for native (no CORS restrictions)
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'EventSwipe/1.0',
-          },
-        }
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+        { headers: { 'User-Agent': 'EventSwipe/1.0' } }
       );
       const results = await response.json();
-
       if (results && results.length > 0) {
-        return results.map(r => ({
-          displayName: r.display_name,
-          latitude: parseFloat(r.lat),
-          longitude: parseFloat(r.lon),
-        }));
+        return {
+          latitude: parseFloat(results[0].lat),
+          longitude: parseFloat(results[0].lon),
+        };
       }
-      return [];
+      return null;
     }
   } catch (error) {
-    console.error('Address search error:', error);
-    return [];
+    console.error('Geocode error:', error);
+    return null;
   }
 };
 
@@ -103,10 +84,6 @@ export default function PostEventScreen({ navigation, route }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
-  const [addressSuggestions, setAddressSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchingAddress, setSearchingAddress] = useState(false);
-  const [confirmedAddress, setConfirmedAddress] = useState(null); // { displayName, latitude, longitude }
   const [category, setCategory] = useState('');
   const [ticketUrl, setTicketUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -116,7 +93,6 @@ export default function PostEventScreen({ navigation, route }) {
   const [error, setError] = useState('');
 
   const { user } = useAuth();
-  const addressDebounceRef = useRef(null);
 
   // Pre-fill form when editing an existing event
   useEffect(() => {
@@ -132,11 +108,6 @@ export default function PostEventScreen({ navigation, route }) {
       // Pre-fill address
       if (editEvent.address) {
         setAddress(editEvent.address);
-        setConfirmedAddress({
-          displayName: editEvent.address,
-          latitude: editEvent.latitude || 0,
-          longitude: editEvent.longitude || 0,
-        });
       }
 
       // Pre-fill dates
@@ -180,11 +151,6 @@ export default function PostEventScreen({ navigation, route }) {
       }
     }
   }, [editEvent]);
-
-  // Dismiss address suggestions (called when other inputs gain focus)
-  const dismissSuggestions = useCallback(() => {
-    setShowSuggestions(false);
-  }, []);
 
   // Format date for display (e.g., "Jan 15, 2025")
   const formatDateDisplay = (date) => {
@@ -283,51 +249,6 @@ export default function PostEventScreen({ navigation, route }) {
     }
   };
 
-  // Handle address text changes with debounced search
-  const handleAddressChange = useCallback((text) => {
-    setAddress(text);
-    // Clear confirmed address if user edits the field
-    if (confirmedAddress) {
-      setConfirmedAddress(null);
-    }
-
-    // Clear any pending debounce
-    if (addressDebounceRef.current) {
-      clearTimeout(addressDebounceRef.current);
-    }
-
-    if (text.length < 3) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    // Debounce: wait 600ms after user stops typing
-    addressDebounceRef.current = setTimeout(async () => {
-      setSearchingAddress(true);
-      const results = await searchAddresses(text);
-      setAddressSuggestions(results);
-      setShowSuggestions(results.length > 0);
-      setSearchingAddress(false);
-    }, 600);
-  }, [confirmedAddress]);
-
-  // Handle selecting a suggestion
-  const selectAddressSuggestion = (suggestion) => {
-    setAddress(suggestion.displayName);
-    setConfirmedAddress(suggestion);
-    setShowSuggestions(false);
-    setAddressSuggestions([]);
-  };
-
-  // Clear confirmed address
-  const clearConfirmedAddress = () => {
-    setAddress('');
-    setConfirmedAddress(null);
-    setAddressSuggestions([]);
-    setShowSuggestions(false);
-  };
-
   const resetForm = () => {
     setTitle('');
     setDescription('');
@@ -337,10 +258,6 @@ export default function PostEventScreen({ navigation, route }) {
     setActivePicker({ type: null, index: null });
     setLocation('');
     setAddress('');
-    setAddressSuggestions([]);
-    setShowSuggestions(false);
-    setSearchingAddress(false);
-    setConfirmedAddress(null);
     setCategory('');
     setTicketUrl('');
     setPrice('');
@@ -365,25 +282,21 @@ export default function PostEventScreen({ navigation, route }) {
     return;
   }
 
-  // Require address for geocoding
-  if (!address) {
+  // Require address
+  if (!address.trim()) {
     setError(i18n.t('postEvent.addressRequired'));
-    return;
-  }
-
-  // Require confirmed address
-  if (!confirmedAddress) {
-    setError(i18n.t('postEvent.selectAddress', { defaultValue: 'Please select an address from the suggestions to confirm the location' }));
     return;
   }
 
   setLoading(true);
 
-  // Use pre-resolved coordinates from the confirmed suggestion
-  const coords = {
-    latitude: confirmedAddress.latitude,
-    longitude: confirmedAddress.longitude,
-  };
+  // Geocode the address to get coordinates
+  const coords = await geocodeAddress(address.trim());
+  if (!coords) {
+    setLoading(false);
+    setError(i18n.t('postEvent.geocodeFailed', { defaultValue: 'Could not find coordinates for that address. Please check the address and try again.' }));
+    return;
+  }
 
   // Sort dates chronologically
   const sortedDates = [...completeDates].sort((a, b) => a.date - b.date);
@@ -502,7 +415,7 @@ export default function PostEventScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onScrollBeginDrag={() => setShowSuggestions(false)}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
@@ -530,7 +443,6 @@ export default function PostEventScreen({ navigation, route }) {
             placeholderTextColor="#999"
             value={title}
             onChangeText={setTitle}
-            onFocus={dismissSuggestions}
           />
         </View>
 
@@ -543,7 +455,6 @@ export default function PostEventScreen({ navigation, route }) {
             placeholderTextColor="#999"
             value={description}
             onChangeText={setDescription}
-            onFocus={dismissSuggestions}
             multiline
             numberOfLines={4}
           />
@@ -676,74 +587,19 @@ export default function PostEventScreen({ navigation, route }) {
             placeholderTextColor="#999"
             value={location}
             onChangeText={setLocation}
-            onFocus={dismissSuggestions}
           />
         </View>
 
         {/* Address */}
-        <View style={[styles.inputGroup, { zIndex: 10 }]}>
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>{i18n.t('postEvent.address')} *</Text>
-          
-          {confirmedAddress ? (
-            // Confirmed address display
-            <View style={styles.confirmedAddressContainer}>
-              <View style={styles.confirmedAddressContent}>
-                <Ionicons name="checkmark-circle" size={20} color="#4ECDC4" />
-                <Text style={styles.confirmedAddressText} numberOfLines={2}>
-                  {confirmedAddress.displayName}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={clearConfirmedAddress} style={styles.confirmedAddressClear}>
-                <Ionicons name="close-circle" size={22} color="#999" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            // Address input with suggestions
-            <View>
-              <View style={styles.addressInputRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder={i18n.t('postEvent.addressPlaceholder')}
-                  placeholderTextColor="#999"
-                  value={address}
-                  onChangeText={handleAddressChange}
-                  onFocus={() => {
-                    if (addressSuggestions.length > 0) setShowSuggestions(true);
-                  }}
-                />
-                {searchingAddress && (
-                  <ActivityIndicator size="small" color="#4ECDC4" style={styles.addressSpinner} />
-                )}
-              </View>
-              
-              {address.length > 0 && address.length < 3 && (
-                <Text style={styles.addressHint}>
-                  {i18n.t('postEvent.keepTyping', { defaultValue: 'Keep typing for suggestions...' })}
-                </Text>
-              )}
-
-              {showSuggestions && addressSuggestions.length > 0 && (
-                <View style={styles.suggestionsContainer}>
-                  {addressSuggestions.map((suggestion, index) => (
-                    <Pressable
-                      key={index}
-                      style={({ pressed }) => [
-                        styles.suggestionItem,
-                        index < addressSuggestions.length - 1 && styles.suggestionBorder,
-                        pressed && { backgroundColor: '#f5f5f5' },
-                      ]}
-                      onPress={() => selectAddressSuggestion(suggestion)}
-                    >
-                      <Ionicons name="location-outline" size={18} color="#4ECDC4" style={{ marginTop: 2 }} />
-                      <Text style={styles.suggestionText} numberOfLines={2}>
-                        {suggestion.displayName}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+          <TextInput
+            style={styles.input}
+            placeholder={i18n.t('postEvent.addressPlaceholder')}
+            placeholderTextColor="#999"
+            value={address}
+            onChangeText={setAddress}
+          />
         </View>
 
         {/* Category */}
@@ -782,7 +638,6 @@ export default function PostEventScreen({ navigation, route }) {
             placeholderTextColor="#999"
             value={price}
             onChangeText={setPrice}
-            onFocus={dismissSuggestions}
           />
         </View>
 
@@ -795,7 +650,6 @@ export default function PostEventScreen({ navigation, route }) {
             placeholderTextColor="#999"
             value={ticketUrl}
             onChangeText={setTicketUrl}
-            onFocus={dismissSuggestions}
             autoCapitalize="none"
             keyboardType="url"
           />
@@ -960,75 +814,6 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
-  },
-  // Address autocomplete styles
-  addressInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addressSpinner: {
-    position: 'absolute',
-    right: 16,
-  },
-  addressHint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 6,
-    marginLeft: 4,
-  },
-  suggestionsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    minHeight: 48,
-    gap: 10,
-  },
-  suggestionBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  suggestionText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    lineHeight: 20,
-  },
-  confirmedAddressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8FAF8',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#4ECDC4',
-  },
-  confirmedAddressContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  confirmedAddressText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    lineHeight: 20,
-  },
-  confirmedAddressClear: {
-    marginLeft: 8,
-    padding: 2,
   },
   // Success screen styles
   successContainer: {
