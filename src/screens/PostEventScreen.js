@@ -19,41 +19,57 @@ import { useAuth } from '../context/AuthContext';
 import { postEvent, updateEvent } from '../services/eventService';
 import i18n from '../i18n';
 
-// Geocode an address to get coordinates (called at submit time)
-const geocodeAddress = async (query) => {
-  if (!query || query.trim().length < 3) return null;
+const GOOGLE_GEOCODING_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_GEOCODING_API_KEY;
+
+// Geocode using Google Geocoding API (primary - handles Google Maps addresses perfectly)
+const geocodeWithGoogle = async (query) => {
   try {
-    if (Platform.OS === 'web') {
-      const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`
-      );
-      const data = await response.json();
-      if (data && data.features && data.features.length > 0) {
-        const f = data.features[0];
-        return {
-          latitude: f.geometry.coordinates[1],
-          longitude: f.geometry.coordinates[0],
-        };
-      }
-      return null;
-    } else {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-        { headers: { 'User-Agent': 'EventSwipe/1.0' } }
-      );
-      const results = await response.json();
-      if (results && results.length > 0) {
-        return {
-          latitude: parseFloat(results[0].lat),
-          longitude: parseFloat(results[0].lon),
-        };
-      }
-      return null;
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_GEOCODING_API_KEY}`
+    );
+    const data = await response.json();
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const loc = data.results[0].geometry.location;
+      return { latitude: loc.lat, longitude: loc.lng };
     }
+    return null;
   } catch (error) {
-    console.error('Geocode error:', error);
+    console.error('Google geocode error:', error);
     return null;
   }
+};
+
+// Fallback: Nominatim (free, no key needed)
+const geocodeWithNominatim = async (query) => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'User-Agent': 'EventSwipe/1.0' } }
+    );
+    const results = await response.json();
+    if (results && results.length > 0) {
+      return {
+        latitude: parseFloat(results[0].lat),
+        longitude: parseFloat(results[0].lon),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Nominatim geocode error:', error);
+    return null;
+  }
+};
+
+// Try Google first, then Nominatim. Returns coords or null.
+const geocodeAddress = async (query) => {
+  if (!query || query.trim().length < 3) return null;
+  // Try Google first
+  const googleResult = await geocodeWithGoogle(query);
+  if (googleResult) return googleResult;
+  // Fallback to Nominatim
+  const nominatimResult = await geocodeWithNominatim(query);
+  if (nominatimResult) return nominatimResult;
+  return null;
 };
 
 // Categories - function to get localized labels
@@ -290,12 +306,12 @@ export default function PostEventScreen({ navigation, route }) {
 
   setLoading(true);
 
-  // Geocode the address to get coordinates
-  const coords = await geocodeAddress(address.trim());
+  // Geocode the address to get coordinates (Google first, then Nominatim)
+  // If geocoding fails, still allow posting with 0,0 coords — the event is still discoverable by browsing
+  let coords = await geocodeAddress(address.trim());
   if (!coords) {
-    setLoading(false);
-    setError(i18n.t('postEvent.geocodeFailed', { defaultValue: 'Could not find coordinates for that address. Please check the address and try again.' }));
-    return;
+    console.warn('Geocoding failed for address, posting with default coordinates:', address);
+    coords = { latitude: 0, longitude: 0 };
   }
 
   // Sort dates chronologically
