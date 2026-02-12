@@ -20,6 +20,8 @@ import i18n from '../i18n';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 150;
 
+const GOOGLE_GEOCODING_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_GEOCODING_API_KEY;
+
 // Categories with i18n keys
 const CATEGORIES = [
   { id: 'music', labelKey: 'categories.music', emoji: '🎵' },
@@ -195,6 +197,41 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
     
     setSearching(true);
     try {
+      // Try Google Geocoding first
+      const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_GEOCODING_API_KEY}`;
+      const googleResponse = await fetch(googleUrl);
+      const googleData = await googleResponse.json();
+
+      if (googleData.status === 'OK' && googleData.results && googleData.results.length > 0) {
+        const formattedResults = googleData.results.slice(0, 5).map((item, index) => {
+          const components = item.address_components || [];
+          const getComponent = (type) => components.find(c => c.types.includes(type))?.long_name || '';
+          
+          return {
+            id: item.place_id || index,
+            name: getComponent('locality') || 
+                  getComponent('sublocality') || 
+                  getComponent('administrative_area_level_2') ||
+                  item.formatted_address.split(',')[0],
+            region: getComponent('administrative_area_level_1') || '',
+            country: getComponent('country') || '',
+            displayName: item.formatted_address,
+            coords: {
+              latitude: item.geometry.location.lat,
+              longitude: item.geometry.location.lng,
+            }
+          };
+        });
+        setSearchResults(formattedResults);
+        setSearching(false);
+        return;
+      }
+    } catch (error) {
+      console.log('Google location search error, falling back to Nominatim:', error);
+    }
+
+    // Fallback to Nominatim
+    try {
       const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
       const url = Platform.OS === 'web' 
         ? `https://corsproxy.io/?${encodeURIComponent(nominatimUrl)}`
@@ -286,44 +323,61 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
       }
 
       const currentLocation = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = currentLocation.coords;
       
+      let cityName = 'Your Area';
+      let regionName = '';
+
+      // Try Google reverse geocoding first
       try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLocation.coords.latitude}&lon=${currentLocation.coords.longitude}`;
-        const url = Platform.OS === 'web' 
-          ? `https://corsproxy.io/?${encodeURIComponent(nominatimUrl)}`
-          : nominatimUrl;
-        
-        const response = await fetch(url, {
-          headers: {
-            'User-Agent': 'EventSwipe App'
-          }
-        });
-        const data = await response.json();
-        
-        const cityName = data.address?.city || 
-                         data.address?.town || 
-                         data.address?.village ||
-                         data.address?.suburb ||
-                         data.address?.county ||
-                         'Your Area';
-        
-        const regionName = data.address?.state || '';
-        
-        setLocation({
-          coords: currentLocation.coords,
-          city: cityName,
-          region: regionName,
-        });
-        setIsCustomLocation(false);
-      } catch (geocodeError) {
-        console.log('Geocoding error:', geocodeError);
-        setLocation({
-          coords: currentLocation.coords,
-          city: 'Your Area',
-          region: '',
-        });
-        setIsCustomLocation(false);
+        const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_GEOCODING_API_KEY}`;
+        const googleResponse = await fetch(googleUrl);
+        const googleData = await googleResponse.json();
+
+        if (googleData.status === 'OK' && googleData.results && googleData.results.length > 0) {
+          const components = googleData.results[0].address_components || [];
+          const getComponent = (type) => components.find(c => c.types.includes(type))?.long_name || '';
+          
+          cityName = getComponent('locality') || 
+                     getComponent('sublocality') || 
+                     getComponent('administrative_area_level_2') || 
+                     'Your Area';
+          regionName = getComponent('administrative_area_level_1') || '';
+        } else {
+          throw new Error('Google reverse geocode failed');
+        }
+      } catch (googleError) {
+        console.log('Google reverse geocode failed, trying Nominatim:', googleError);
+        // Fallback to Nominatim
+        try {
+          const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+          const url = Platform.OS === 'web' 
+            ? `https://corsproxy.io/?${encodeURIComponent(nominatimUrl)}`
+            : nominatimUrl;
+          
+          const response = await fetch(url, {
+            headers: { 'User-Agent': 'EventSwipe App' }
+          });
+          const data = await response.json();
+          
+          cityName = data.address?.city || 
+                     data.address?.town || 
+                     data.address?.village ||
+                     data.address?.suburb ||
+                     data.address?.county ||
+                     'Your Area';
+          regionName = data.address?.state || '';
+        } catch (nominatimError) {
+          console.log('Nominatim reverse geocode also failed:', nominatimError);
+        }
       }
+
+      setLocation({
+        coords: currentLocation.coords,
+        city: cityName,
+        region: regionName,
+      });
+      setIsCustomLocation(false);
     } catch (error) {
       setLocationError(i18n.t('errors.locationFailed') || 'Could not get location');
     }
