@@ -540,6 +540,7 @@ export default function PostEventScreen({ navigation, route }) {
                     value={dates[activePicker.index].date}
                     mode="date"
                     display="spinner"
+                    themeVariant="light"
                     onChange={onDateChange}
                     minimumDate={new Date()}
                   />
@@ -551,6 +552,7 @@ export default function PostEventScreen({ navigation, route }) {
               value={dates[activePicker.index].date}
               mode="date"
               display="default"
+              themeVariant="light"
               onChange={onDateChange}
               minimumDate={new Date()}
             />
@@ -578,6 +580,7 @@ export default function PostEventScreen({ navigation, route }) {
                     value={dates[activePicker.index].time}
                     mode="time"
                     display="spinner"
+                    themeVariant="light"
                     onChange={onTimeChange}
                   />
                 </View>
@@ -588,6 +591,7 @@ export default function PostEventScreen({ navigation, route }) {
               value={dates[activePicker.index].time}
               mode="time"
               display="default"
+              themeVariant="light"
               onChange={onTimeChange}
             />
           )

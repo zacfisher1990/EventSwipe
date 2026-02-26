@@ -16,6 +16,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
 import { uploadEventImage } from './storageService';
+import { trackView, trackSave } from './analyticsService';
 // API events are fetched via Cloud Function (getEventsForLocation)
 import i18n from '../i18n';
 
@@ -302,6 +303,9 @@ export const saveEvent = async (userId, event) => {
       savedEvents: arrayUnion(event),
       swipedEvents: arrayUnion(...idsToMark)
     });
+    // Track view + save (fire and forget — don't block the UI)
+    trackView(event.id);
+    trackSave(event.id, event.title, event.source);
     return { success: true };
   } catch (error) {
     console.error('Error saving event:', error);
@@ -317,6 +321,8 @@ export const passEvent = async (userId, eventId, groupedIds = null) => {
     await updateDoc(userRef, {
       swipedEvents: arrayUnion(...idsToMark)
     });
+    // Track view even on pass (fire and forget)
+    trackView(eventId);
     return { success: true };
   } catch (error) {
     console.error('Error passing event:', error);

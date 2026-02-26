@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getUserEvents, getSavedEvents, unsaveEvent, deleteEvent } from '../services/eventService';
+import { getBatchEventAnalytics } from '../services/analyticsService';
 import EventDetailsModal from '../components/EventDetailsModal';
 import i18n from '../i18n';
 
@@ -86,7 +87,25 @@ export default function ActivityScreen() {
     // Load user's posted events
     const postedResult = await getUserEvents(user.uid);
     if (postedResult.success) {
-      setPostedEvents(postedResult.events);
+      const events = postedResult.events;
+      
+      // Fetch analytics for all posted events
+      if (events.length > 0) {
+        const eventIds = events.map(e => e.id);
+        const analyticsMap = await getBatchEventAnalytics(eventIds);
+        
+        // Merge analytics into event objects
+        const eventsWithStats = events.map(event => ({
+          ...event,
+          views: analyticsMap[event.id]?.views || 0,
+          saves: analyticsMap[event.id]?.saves || 0,
+          ticketTaps: analyticsMap[event.id]?.ticketTaps || 0,
+        }));
+        
+        setPostedEvents(eventsWithStats);
+      } else {
+        setPostedEvents(events);
+      }
     }
   };
 
