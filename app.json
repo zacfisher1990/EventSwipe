@@ -2,7 +2,7 @@
   "expo": {
     "name": "EventSwipe",
     "slug": "EventSwipe",
-    "version": "1.0.20",
+    "version": "1.0.21",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.eventswipeapp.eventswipe",
-      "buildNumber": "1",
+      "buildNumber": "21",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCtFbraPsqbZln8OV6yuaBz_as4MNl5qD0"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "EventSwipe uses your location to find events near you.",
         "NSPhotoLibraryUsageDescription": "EventSwipe needs access to your photo library so you can select images to include with events you create and share with other users.",
@@ -32,6 +35,11 @@
         "barStyle": "dark-content"
       },
       "package": "com.eventswipeapp.eventswipe",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA8a3YcbYF_fyri_5g9In8mns3P1IOy-8M"
+        }
+      },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
