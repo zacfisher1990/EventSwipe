@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { postEvent, updateEvent } from '../services/eventService';
 import i18n from '../i18n';
+import LocationPickerMap from '../components/LocationPickerMap';
 
 const GOOGLE_GEOCODING_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_GEOCODING_API_KEY;
 
@@ -104,6 +105,7 @@ export default function PostEventScreen({ navigation, route }) {
   const [ticketUrl, setTicketUrl] = useState('');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState(null);
+  const [confirmedCoords, setConfirmedCoords] = useState(null); // { lat, lng } set by LocationPickerMap
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -124,6 +126,11 @@ export default function PostEventScreen({ navigation, route }) {
       // Pre-fill address
       if (editEvent.address) {
         setAddress(editEvent.address);
+      }
+
+      // Pre-fill confirmed coords so the map renders immediately in edit mode
+      if (editEvent.latitude && editEvent.longitude) {
+        setConfirmedCoords({ lat: editEvent.latitude, lng: editEvent.longitude });
       }
 
       // Pre-fill dates
@@ -274,6 +281,7 @@ export default function PostEventScreen({ navigation, route }) {
     setActivePicker({ type: null, index: null });
     setLocation('');
     setAddress('');
+    setConfirmedCoords(null);
     setCategory('');
     setTicketUrl('');
     setPrice('');
@@ -306,9 +314,12 @@ export default function PostEventScreen({ navigation, route }) {
 
   setLoading(true);
 
-  // Geocode the address to get coordinates (Google first, then Nominatim)
-  // If geocoding fails, still allow posting with 0,0 coords — the event is still discoverable by browsing
-  let coords = await geocodeAddress(address.trim());
+  // Use coordinates already verified via the map picker.
+  // Fall back to geocoding only if the user somehow skipped the confirmation step.
+  let coords = confirmedCoords
+    ? { latitude: confirmedCoords.lat, longitude: confirmedCoords.lng }
+    : await geocodeAddress(address.trim());
+
   if (!coords) {
     console.warn('Geocoding failed for address, posting with default coordinates:', address);
     coords = { latitude: 0, longitude: 0 };
@@ -610,15 +621,17 @@ export default function PostEventScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Address */}
+        {/* Address — map picker */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{i18n.t('postEvent.address')} *</Text>
-          <TextInput
-            style={styles.input}
+          <LocationPickerMap
+            initialAddress={address}
+            initialCoords={confirmedCoords}
             placeholder={i18n.t('postEvent.addressPlaceholder')}
-            placeholderTextColor="#999"
-            value={address}
-            onChangeText={setAddress}
+            onLocationConfirmed={({ address: confirmedAddress, coordinates }) => {
+              setAddress(confirmedAddress);
+              setConfirmedCoords(coordinates);
+            }}
           />
         </View>
 
