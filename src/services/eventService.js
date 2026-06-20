@@ -1,7 +1,8 @@
-import { 
-  doc, 
-  updateDoc, 
-  arrayUnion, 
+import {
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
   getDoc,
   collection,
   addDoc,
@@ -11,7 +12,7 @@ import {
   orderBy,
   Timestamp,
   deleteDoc,
-  deleteField 
+  deleteField
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
@@ -326,6 +327,40 @@ export const passEvent = async (userId, eventId, groupedIds = null) => {
     return { success: true };
   } catch (error) {
     console.error('Error passing event:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Undo a left-swipe (pass) — removes IDs from swipedEvents
+export const undoPassEvent = async (userId, eventId, groupedIds = null) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const idsToRemove = groupedIds || [eventId];
+    await updateDoc(userRef, {
+      swipedEvents: arrayRemove(...idsToRemove),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error undoing pass:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Undo a right-swipe (save) — removes event from savedEvents and IDs from swipedEvents
+export const undoSaveEvent = async (userId, event) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    const savedEvents = userDoc.data()?.savedEvents || [];
+    const updatedSaved = savedEvents.filter(e => e.id !== event.id);
+    const idsToRemove = event.groupedIds || [event.id];
+    await updateDoc(userRef, {
+      savedEvents: updatedSaved,
+      swipedEvents: arrayRemove(...idsToRemove),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error undoing save:', error);
     return { success: false, error: error.message };
   }
 };

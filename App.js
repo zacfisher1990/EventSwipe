@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { EventCacheProvider } from './src/context/EventCacheContext';
 import AuthModal from './src/components/AuthModal';
 import TabNavigator from './src/navigation/TabNavigator';
 import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
@@ -20,9 +21,11 @@ function AppContent() {
   }
   
   return user ? (
-    <NavigationContainer>
-      <TabNavigator />
-    </NavigationContainer>
+    <EventCacheProvider>
+      <NavigationContainer>
+        <TabNavigator />
+      </NavigationContainer>
+    </EventCacheProvider>
   ) : (
     <AuthModal />
   );

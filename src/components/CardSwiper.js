@@ -104,6 +104,11 @@ const CardSwiper = forwardRef(function CardSwiper({
   useImperativeHandle(ref, () => ({
     swipeLeft: () => swipeOffScreenRef.current('left'),
     swipeRight: () => swipeOffScreenRef.current('right'),
+    undoSwipe: () => {
+      if (currentIndexRef.current > 0) {
+        setCurrentIndex(prev => prev - 1);
+      }
+    },
   }));
 
   const panResponder = useRef(

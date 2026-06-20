@@ -1,75 +1,35 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { saveEvent, getEvents, passEvent } from '../services/eventService';
+import { saveEvent, passEvent, undoPassEvent, undoSaveEvent } from '../services/eventService';
+import { useEventCache } from '../context/EventCacheContext';
 import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
-import * as Location from 'expo-location';
 import { submitReport } from '../services/reportService';
 import i18n from '../i18n';
 
 export default function HomeScreen() {
-  const [events, setEvents] = useState([]);
+  const { events, loading, backgroundRefreshing, fetchId, filters, applyFilters, refresh, prefetchAhead } = useEventCache();
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [swiperKey, setSwiperKey] = useState(0);
-  const [filters, setFilters] = useState({
-    distance: 25,
-    timeRange: 'month',
-    categories: null,
-    location: null,
-    isCustomLocation: false,
-  });
+  const [lastSwipe, setLastSwipe] = useState(null); // { direction, event }
   const { user } = useAuth();
   const swiperRef = useRef(null);
 
-  const loadEvents = async (currentFilters = filters) => {
-    setLoading(true);
-    
-    let location = null;
-    
-    if (currentFilters.location?.coords) {
-      location = {
-        latitude: currentFilters.location.coords.latitude,
-        longitude: currentFilters.location.coords.longitude,
-      };
-      console.log('Using location from filters:', location, 
-        currentFilters.isCustomLocation ? '(custom)' : '(GPS)');
-    } else {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const position = await Location.getCurrentPositionAsync({});
-          location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          console.log('Fetched GPS location:', location);
-        }
-      } catch (error) {
-        console.log('Could not get location:', error);
-      }
-    }
-    
-    const result = await getEvents(user?.uid, location, currentFilters);
-    if (result.success) {
-      setEvents(result.events);
-      setAllSwiped(result.events.length === 0);
-      setSwiperKey(prev => prev + 1);
-    }
-    setLoading(false);
-  };
-
+  // Reset the swiper deck whenever a new batch of events arrives
   useEffect(() => {
-    loadEvents();
-  }, [user]);
+    setAllSwiped(events.length === 0);
+    setSwiperKey(prev => prev + 1);
+  }, [fetchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSwipedLeft = async (index, event) => {
     console.log('Passed on:', event?.title);
-    
+    prefetchAhead(index);
+    setLastSwipe({ direction: 'left', event });
+
     if (user?.uid && event) {
       await passEvent(user.uid, event.id, event.groupedIds);
     }
@@ -77,6 +37,8 @@ export default function HomeScreen() {
 
   const onSwipedRight = async (index, event) => {
     console.log('Saving:', event?.title);
+    prefetchAhead(index);
+    setLastSwipe({ direction: 'right', event });
     
     if (user?.uid && event) {
       const eventToSave = {
@@ -99,11 +61,22 @@ export default function HomeScreen() {
     setAllSwiped(true);
   };
 
+  const handleUndo = async () => {
+    if (!lastSwipe || !user?.uid) return;
+    const { direction, event } = lastSwipe;
+    setLastSwipe(null);
+    swiperRef.current?.undoSwipe();
+    if (direction === 'left') {
+      await undoPassEvent(user.uid, event.id, event.groupedIds);
+    } else {
+      await undoSaveEvent(user.uid, event);
+    }
+  };
+
   const handleApplyFilters = (newFilters) => {
-    setFilters(newFilters);
-    console.log('Applied filters:', newFilters);
     setAllSwiped(false);
-    loadEvents(newFilters);
+    setLastSwipe(null);
+    applyFilters(newFilters);
   };
 
   const handleCardTap = (event) => {
@@ -216,9 +189,9 @@ export default function HomeScreen() {
       >
         <Text style={styles.emptyButtonText}>{i18n.t('discover.adjustFilters')}</Text>
       </TouchableOpacity>
-      <TouchableOpacity 
-        style={[styles.emptyButton, styles.refreshButton]} 
-        onPress={() => loadEvents(filters)}
+      <TouchableOpacity
+        style={[styles.emptyButton, styles.refreshButton]}
+        onPress={() => refresh()}
       >
         <Text style={styles.emptyButtonText}>{i18n.t('discover.refreshEvents')}</Text>
       </TouchableOpacity>
@@ -254,6 +227,12 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+      {backgroundRefreshing && (
+        <View style={styles.backgroundRefreshBar}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.backgroundRefreshText}>Updating events...</Text>
+        </View>
+      )}
       
       <View style={styles.swiperContainer}>
         {loading ? (
@@ -273,6 +252,12 @@ export default function HomeScreen() {
           />
         )}
       </View>
+
+      {lastSwipe && (
+        <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
+          <Text style={styles.undoButtonText}>↩ Undo</Text>
+        </TouchableOpacity>
+      )}
 
       <FilterModal
         visible={showFilters}
@@ -340,6 +325,39 @@ const styles = StyleSheet.create({
   },
   swiperContainer: {
     flex: 1,
+  },
+  undoButton: {
+    position: 'absolute',
+    bottom: 24,
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    zIndex: 20,
+  },
+  undoButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  backgroundRefreshBar: {
+    backgroundColor: '#aaa',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  backgroundRefreshText: {
+    color: '#fff',
+    fontSize: 13,
   },
   card: {
     flex: 1,
