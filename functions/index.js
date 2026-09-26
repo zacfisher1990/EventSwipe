@@ -102,6 +102,205 @@ async function sendUrgentNotification(report, count) {
 }
 
 // ============================================================
+// TICKETMASTER EVENTS (cached per location)
+// Called by the app via httpsCallable('getEventsForLocation').
+// ============================================================
+
+const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY; // functions/.env
+const CACHE_TTL_HOURS = 6;
+const CACHE_COLLECTION = 'eventCache';
+
+// Round coordinates to create cache key (~7 mile precision)
+const createCacheKey = (lat, lng, radius) => {
+  const precision = 1;
+  const roundedLat = Math.round(lat * Math.pow(10, precision)) / Math.pow(10, precision);
+  const roundedLng = Math.round(lng * Math.pow(10, precision)) / Math.pow(10, precision);
+  return `${roundedLat}_${roundedLng}_${radius}`;
+};
+
+// Check if cache is still fresh
+const isCacheFresh = (cachedAt) => {
+  if (!cachedAt) return false;
+  const cacheTime = cachedAt.toDate ? cachedAt.toDate() : new Date(cachedAt);
+  const now = new Date();
+  const hoursSinceCached = (now - cacheTime) / (1000 * 60 * 60);
+  return hoursSinceCached < CACHE_TTL_HOURS;
+};
+
+// Fetch from Ticketmaster
+const fetchTicketmaster = async (lat, lng, radius) => {
+  if (!TICKETMASTER_API_KEY) {
+    console.log('Ticketmaster API key not configured');
+    return [];
+  }
+
+  try {
+    const startDateTime = new Date().toISOString().slice(0, 19) + 'Z';
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&size=100&sort=date,asc&startDateTime=${startDateTime}&latlong=${lat},${lng}&radius=${radius}&unit=miles`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Ticketmaster API error:', data);
+      return [];
+    }
+
+    const events = data._embedded?.events || [];
+    return events.map(event => transformTicketmasterEvent(event));
+  } catch (error) {
+    console.error('Ticketmaster fetch error:', error);
+    return [];
+  }
+};
+
+// Transform Ticketmaster event to standard format
+const transformTicketmasterEvent = (event) => {
+  const venue = event._embedded?.venues?.[0];
+  const priceRange = event.priceRanges?.[0];
+  const classification = event.classifications?.[0];
+
+  // Get best image
+  let image = null;
+  if (event.images?.length > 0) {
+    const best = event.images.find(img => img.ratio === '16_9' && img.width > 500)
+      || event.images.find(img => img.ratio === '16_9')
+      || event.images[0];
+    image = best?.url;
+  }
+
+  // Map category
+  const segment = classification?.segment?.name?.toLowerCase() || '';
+  const genre = classification?.genre?.name?.toLowerCase() || '';
+  let category = 'other';
+  if (genre === 'comedy' || event.name?.toLowerCase().includes('comedy')) {
+    category = 'comedy';
+  } else if (segment === 'music') {
+    category = 'music';
+  } else if (segment === 'sports') {
+    category = 'sports';
+  } else if (segment === 'arts & theatre') {
+    category = 'arts';
+  }
+
+  return {
+    id: event.id,
+    title: event.name,
+    date: event.dates?.start?.localDate || '',
+    time: event.dates?.start?.localTime?.slice(0, 5) || '',
+    location: venue?.name || '',
+    city: venue?.city?.name || '',
+    state: venue?.state?.stateCode || '',
+    address: venue?.address?.line1 || '',
+    latitude: parseFloat(venue?.location?.latitude) || null,
+    longitude: parseFloat(venue?.location?.longitude) || null,
+    category: category,
+    price: priceRange
+      ? (priceRange.min === priceRange.max
+          ? `$${priceRange.min}`
+          : `$${priceRange.min} - $${priceRange.max}`)
+      : null,
+    image: image,
+    ticketUrl: event.url || '',
+    source: 'ticketmaster',
+    venueName: venue?.name || '',
+  };
+};
+
+/**
+ * Main cached event fetching function
+ * Called by the app to get events for a location
+ */
+// minInstances keeps one instance warm so a user's first launch doesn't wait
+// on a cold start (~a few $/month at 256MB).
+exports.getEventsForLocation = functions
+  .runWith({ minInstances: 1 })
+  .https.onCall(async (data, context) => {
+  const { latitude, longitude, radius = 50 } = data;
+
+  if (!latitude || !longitude) {
+    throw new functions.https.HttpsError('invalid-argument', 'latitude and longitude are required');
+  }
+
+  const cacheKey = createCacheKey(latitude, longitude, radius);
+  console.log(`Cache key: ${cacheKey}`);
+
+  // Check cache first
+  try {
+    const cacheRef = db.collection(CACHE_COLLECTION).doc(cacheKey);
+    const cacheDoc = await cacheRef.get();
+
+    if (cacheDoc.exists && isCacheFresh(cacheDoc.data().cachedAt)) {
+      console.log(`Cache HIT for ${cacheKey}`);
+      return {
+        success: true,
+        events: cacheDoc.data().events,
+        fromCache: true,
+        cachedAt: cacheDoc.data().cachedAt.toDate().toISOString(),
+      };
+    }
+
+    console.log(`Cache MISS for ${cacheKey}, fetching from Ticketmaster...`);
+  } catch (cacheError) {
+    console.error('Cache read error:', cacheError);
+  }
+
+  // Fetch from Ticketmaster
+  const allEvents = await fetchTicketmaster(latitude, longitude, radius);
+
+  console.log(`Fetched ${allEvents.length} events from Ticketmaster`);
+
+  // Save to cache
+  try {
+    const cacheRef = db.collection(CACHE_COLLECTION).doc(cacheKey);
+    await cacheRef.set({
+      events: allEvents,
+      cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+      latitude,
+      longitude,
+      radius,
+    });
+    console.log(`Cached ${allEvents.length} events for ${cacheKey}`);
+  } catch (cacheWriteError) {
+    console.error('Cache write error:', cacheWriteError);
+  }
+
+  return {
+    success: true,
+    events: allEvents,
+    fromCache: false,
+  };
+});
+
+/**
+ * Scheduled cleanup of expired Ticketmaster cache entries.
+ * Deletes in chunks because a batch holds at most 500 writes.
+ */
+exports.cleanupExpiredCache = functions.pubsub
+  .schedule('every day 04:30')
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    const cutoff = new Date(Date.now() - CACHE_TTL_HOURS * 2 * 60 * 60 * 1000);
+    let deleted = 0;
+
+    while (true) {
+      const snapshot = await db.collection(CACHE_COLLECTION)
+        .where('cachedAt', '<', cutoff)
+        .limit(500)
+        .get();
+      if (snapshot.empty) break;
+
+      const batch = db.batch();
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += snapshot.size;
+    }
+
+    console.log(`Cleaned up ${deleted} expired cache entries`);
+    return null;
+  });
+
+// ============================================================
 // EVENTBRITE SCRAPER FUNCTIONS
 // ============================================================
 

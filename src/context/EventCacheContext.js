@@ -17,6 +17,13 @@ const DEFAULT_FILTERS = {
 };
 
 const LOCATION_CACHE_TTL_MS = 5 * 60 * 1000;
+const LAST_KNOWN_MAX_AGE_MS = 30 * 60 * 1000;
+
+// Cards at and just behind the top of the deck stay put when new results are
+// merged in, so nothing changes under the user's finger.
+const VISIBLE_CARDS = 3;
+
+const eventIds = (event) => event.groupedIds || [event.id];
 
 const cacheKey = (userId) => `events_cache_${userId}`;
 
@@ -39,8 +46,81 @@ export function EventCacheProvider({ children }) {
   const [fetchId, setFetchId] = useState(0);
 
   const locationCacheRef = useRef(null);
-  const fetchInProgressRef = useRef(false);
+  const fetchTokenRef = useRef(0);
   const filtersRef = useRef(DEFAULT_FILTERS);
+
+  // The deck as the swiper sees it, and how far into it the user has swiped
+  // (kept in step with CardSwiper's index via markSwiped/unmarkSwiped).
+  const deckRef = useRef([]);
+  const deckPosRef = useRef(0);
+  const sessionSwipedRef = useRef(new Set());
+
+  // Start a fresh deck: CardSwiper remounts (fetchId) at index 0.
+  const replaceDeck = useCallback((list) => {
+    deckRef.current = list;
+    deckPosRef.current = 0;
+    setEvents(list);
+    setFetchId(prev => prev + 1);
+    prefetchImages(list, 0, 5);
+  }, []);
+
+  // Fold new results into the current deck without disturbing what's on
+  // screen: keep the swiped + visible cards, replace everything behind them.
+  const mergeIntoDeck = useCallback((fresh) => {
+    const deck = deckRef.current;
+    const pos = deckPosRef.current;
+    const swiped = sessionSwipedRef.current;
+    const notSwiped = (e) => !eventIds(e).some(id => swiped.has(id));
+
+    if (pos >= deck.length) {
+      // Deck exhausted (or empty) — nothing on screen to preserve
+      replaceDeck(fresh.filter(notSwiped));
+      return;
+    }
+
+    const kept = deck.slice(0, pos + VISIBLE_CARDS);
+    const keptIds = new Set(kept.flatMap(eventIds));
+    const rest = fresh.filter(e => notSwiped(e) && !eventIds(e).some(id => keptIds.has(id)));
+    const merged = [...kept, ...rest];
+    deckRef.current = merged;
+    setEvents(merged);
+  }, [replaceDeck]);
+
+  const persistCache = useCallback(async (userId, eventList, currentFilters) => {
+    try {
+      await AsyncStorage.setItem(cacheKey(userId), JSON.stringify({
+        events: eventList,
+        filters: currentFilters,
+        savedAt: Date.now(),
+      }));
+    } catch {
+      // Non-critical — ignore storage failures
+    }
+  }, []);
+
+  // Keep the disk cache in step with swiping, so the next launch doesn't
+  // open on cards the user already swiped.
+  const persistTimerRef = useRef(null);
+  const schedulePersistDeck = useCallback(() => {
+    clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      if (user?.uid) {
+        persistCache(user.uid, deckRef.current.slice(deckPosRef.current), filtersRef.current);
+      }
+    }, 1000);
+  }, [user, persistCache]);
+
+  const markSwiped = useCallback((event) => {
+    eventIds(event).forEach(id => sessionSwipedRef.current.add(id));
+    deckPosRef.current += 1;
+    schedulePersistDeck();
+  }, [schedulePersistDeck]);
+
+  const unmarkSwiped = useCallback((event) => {
+    eventIds(event).forEach(id => sessionSwipedRef.current.delete(id));
+    deckPosRef.current = Math.max(0, deckPosRef.current - 1);
+    schedulePersistDeck();
+  }, [schedulePersistDeck]);
 
   const getLocation = useCallback(async (filterLocation) => {
     perfMark('location:start');
@@ -66,7 +146,10 @@ export function EventCacheProvider({ children }) {
       perfMark('location:permission-resolved', { status });
 
       if (status === 'granted') {
-        const position = await Location.getCurrentPositionAsync({
+        // A recent last-known fix is instant and plenty accurate for a
+        // multi-mile radius; only wait on a fresh GPS fix without one.
+        const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS });
+        const position = lastKnown ?? await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
         const coords = {
@@ -74,7 +157,7 @@ export function EventCacheProvider({ children }) {
           longitude: position.coords.longitude,
         };
         locationCacheRef.current = { coords, fetchedAt: Date.now() };
-        perfMark('location:acquired', { source: 'gps-fix' });
+        perfMark('location:acquired', { source: lastKnown ? 'last-known' : 'gps-fix' });
         return coords;
       }
       perfMark('location:acquired', { source: 'denied', status });
@@ -85,21 +168,11 @@ export function EventCacheProvider({ children }) {
     return null;
   }, []);
 
-  const persistCache = useCallback(async (userId, eventList, currentFilters) => {
-    try {
-      await AsyncStorage.setItem(cacheKey(userId), JSON.stringify({
-        events: eventList,
-        filters: currentFilters,
-        savedAt: Date.now(),
-      }));
-    } catch {
-      // Non-critical — ignore storage failures
-    }
-  }, []);
 
   const fetchEvents = useCallback(async (filtersOverride, { background = false } = {}) => {
-    if (fetchInProgressRef.current) return;
-    fetchInProgressRef.current = true;
+    // A newer fetch (e.g. filters changed mid-refresh) supersedes this one
+    const token = ++fetchTokenRef.current;
+    const isCurrent = () => token === fetchTokenRef.current;
 
     const currentFilters = filtersOverride ?? filtersRef.current;
 
@@ -112,33 +185,50 @@ export function EventCacheProvider({ children }) {
     try {
       perfMark('fetch:start', { background });
       const location = await getLocation(currentFilters.location);
+      if (!isCurrent()) return;
+
+      // Foreground fetches (first launch, new filters) start a new deck with
+      // the first non-empty batch; everything after that merges in.
+      let shown = false;
+      const onUpdate = (list, { final }) => {
+        if (!isCurrent()) return;
+        if (!shown) {
+          if (list.length === 0 && !final) return;
+          shown = true;
+          if (background) mergeIntoDeck(list); else replaceDeck(list);
+          setLoading(false);
+          perfMark('state:events-committed', { count: list.length, background, final });
+        } else {
+          mergeIntoDeck(list);
+        }
+      };
 
       perfMark('net:request-sent', { hasLocation: !!location });
-      const result = await getEvents(user?.uid, location, currentFilters);
+      const result = await getEvents(user?.uid, location, currentFilters, onUpdate);
       perfMark('net:response-received', {
         ok: result.success,
         events: result.events?.length ?? 0,
       });
 
-      if (result.success) {
-        setEvents(result.events);
-        setFetchId(prev => prev + 1);
-        perfMark('state:events-committed', { count: result.events.length, background });
-        prefetchImages(result.events, 0, 5);
-        if (user?.uid) persistCache(user.uid, result.events, currentFilters);
+      if (result.success && isCurrent() && user?.uid) {
+        persistCache(user.uid, result.events, currentFilters);
       }
     } finally {
-      fetchInProgressRef.current = false;
-      setLoading(false);
-      setBackgroundRefreshing(false);
+      if (isCurrent()) {
+        setLoading(false);
+        setBackgroundRefreshing(false);
+      }
     }
-  }, [user, getLocation, persistCache]);
+  }, [user, getLocation, persistCache, replaceDeck, mergeIntoDeck]);
 
   // On login: show disk cache instantly, then refresh in background
   useEffect(() => {
     if (!user) {
       setEvents([]);
       setFetchId(0);
+      deckRef.current = [];
+      deckPosRef.current = 0;
+      sessionSwipedRef.current = new Set();
       locationCacheRef.current = null;
       return;
     }
@@ -154,10 +244,8 @@ export function EventCacheProvider({ children }) {
           const activeFilters = cachedFilters ?? DEFAULT_FILTERS;
           filtersRef.current = activeFilters;
           setFilters(activeFilters);
-          setEvents(cachedEvents);
-          setFetchId(prev => prev + 1);
+          replaceDeck(cachedEvents ?? []);
           perfMark('cache:hydrated-from-disk', { count: cachedEvents?.length ?? 0 });
-          prefetchImages(cachedEvents, 0, 5);
           // Silently refresh in background — user already sees content
           fetchEvents(activeFilters, { background: true });
         } else {
@@ -194,6 +282,8 @@ export function EventCacheProvider({ children }) {
       applyFilters,
       refresh,
       prefetchAhead,
+      markSwiped,
+      unmarkSwiped,
     }}>
       {children}
     </EventCacheContext.Provider>

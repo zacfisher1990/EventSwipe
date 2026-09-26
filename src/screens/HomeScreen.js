@@ -13,7 +13,7 @@ import { perfMark, perfMarkAfterPaint, perfSummary } from '../utils/perf';
 export default function HomeScreen() {
   perfMark('screen:home-mounted');
 
-  const { events, loading, backgroundRefreshing, fetchId, filters, applyFilters, refresh, prefetchAhead } = useEventCache();
+  const { events, loading, backgroundRefreshing, fetchId, filters, applyFilters, refresh, prefetchAhead, markSwiped, unmarkSwiped } = useEventCache();
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -40,6 +40,7 @@ export default function HomeScreen() {
 
   const onSwipedLeft = async (index, event) => {
     console.log('Passed on:', event?.title);
+    if (event) markSwiped(event);
     prefetchAhead(index);
     setLastSwipe({ direction: 'left', event });
 
@@ -50,6 +51,7 @@ export default function HomeScreen() {
 
   const onSwipedRight = async (index, event) => {
     console.log('Saving:', event?.title);
+    if (event) markSwiped(event);
     prefetchAhead(index);
     setLastSwipe({ direction: 'right', event });
     
@@ -78,7 +80,10 @@ export default function HomeScreen() {
     if (!lastSwipe || !user?.uid) return;
     const { direction, event } = lastSwipe;
     setLastSwipe(null);
-    swiperRef.current?.undoSwipe();
+    if (swiperRef.current) {
+      swiperRef.current.undoSwipe();
+      unmarkSwiped(event);
+    }
     if (direction === 'left') {
       await undoPassEvent(user.uid, event.id, event.groupedIds);
     } else {

@@ -89,19 +89,17 @@ const deduplicateEvents = (events) => {
     return aPriority - bPriority;
   });
   
+  const byDate = new Map();
   for (const event of sorted) {
-    let isDupe = false;
-    for (const existing of result) {
-      if (isDuplicate(event, existing)) {
-        isDupe = true;
-        console.log(`Duplicate detected: "${event.title}" (${event.source}) matches "${existing.title}" (${existing.source})`);
-        break;
-      }
+    const sameDay = byDate.get(event.date) || [];
+    const match = sameDay.find(existing => isDuplicate(event, existing));
+    if (match) {
+      console.log(`Duplicate detected: "${event.title}" (${event.source}) matches "${match.title}" (${match.source})`);
+      continue;
     }
-    
-    if (!isDupe) {
-      result.push(event);
-    }
+    sameDay.push(event);
+    byDate.set(event.date, sameDay);
+    result.push(event);
   }
   
   return result;
@@ -456,213 +454,186 @@ export const postEvent = async (eventData, userId) => {
 };
 
 // ============================================================
-// GET EVENTS - Now uses Cloud Function with caching
+// GET EVENTS
+// Sources (Firestore, Cloud Function/Ticketmaster, swiped ids) are fetched in
+// parallel. Each time a source lands, the events received so far are run
+// through the filter pipeline and passed to onUpdate, so the deck can show
+// the first source's events without waiting for the slowest one.
 // ============================================================
-export const getEvents = async (userId, location, filters = {}) => {
+
+const MILES_PER_DEGREE_LAT = 69;
+
+// User-posted and scraped events. With a location, only fetch a latitude band
+// around it instead of every city's events (single-field range query, so no
+// composite index needed); the distance filter trims the band to the radius.
+const fetchFirestoreEvents = async (location, radius) => {
+  const eventsRef = collection(db, 'events');
+  const q = location
+    ? query(
+        eventsRef,
+        where('latitude', '>=', location.latitude - radius / MILES_PER_DEGREE_LAT),
+        where('latitude', '<=', location.latitude + radius / MILES_PER_DEGREE_LAT)
+      )
+    : query(eventsRef, where('active', '==', true), orderBy('createdAt', 'desc'));
+
+  perfMark('net:firestore-events-sent');
+  const snapshot = await getDocs(q);
+  perfMark('net:firestore-events-received', { docs: snapshot.size });
+
+  return snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data(), source: 'firebase' }))
+    .filter(event => event.active === true);
+};
+
+const fetchApiEvents = async (location, radius) => {
+  if (!location) return [];
   try {
-    console.log('=== getEvents called ===');
-    console.log('Filters:', JSON.stringify(filters, null, 2));
-    
-    // Get Firebase events (user-posted)
-    const eventsRef = collection(db, 'events');
-    const q = query(
-      eventsRef, 
-      where('active', '==', true),
-      orderBy('createdAt', 'desc')
-    );
-    
-    perfMark('net:firestore-events-sent');
-    const snapshot = await getDocs(q);
-    perfMark('net:firestore-events-received', { docs: snapshot.size });
-
-    let firebaseEvents = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      source: 'firebase',
-    }));
-    console.log(`Firebase events: ${firebaseEvents.length}`);
-    
-    // ========================================
-    // FETCH API EVENTS VIA CLOUD FUNCTION
-    // ========================================
-    let apiEvents = [];
-    
-    if (location?.latitude && location?.longitude) {
-      const radius = filters?.distance || 50;
-      
-      try {
-        console.log('Calling Cloud Function for cached events...');
-        perfMark('net:cloudfn-sent');
-        const result = await getEventsForLocation({
-          latitude: location.latitude,
-          longitude: location.longitude,
-          radius: radius,
-        });
-        perfMark('net:cloudfn-received', {
-          events: result.data?.events?.length ?? 0,
-          fromCache: result.data?.fromCache,
-        });
-
-        if (result.data.success) {
-          apiEvents = result.data.events || [];
-          console.log(`Got ${apiEvents.length} events from Cloud Function (fromCache: ${result.data.fromCache})`);
-          
-          // Add placeholder images for events missing them
-          apiEvents = apiEvents.map(event => ({
-            ...event,
-            image: event.image || CATEGORY_PLACEHOLDERS[event.category] || CATEGORY_PLACEHOLDERS['other'],
-          }));
-        }
-      } catch (functionError) {
-        perfMark('net:cloudfn-received', { error: true });
-        console.error('Cloud Function error:', functionError);
-        // Could fall back to direct API calls here if needed
-      }
-    }
-    
-    // ========================================
-    // DEDUPLICATION: Across ALL sources
-    // ========================================
-    let allEvents = [...firebaseEvents, ...apiEvents];
-    console.log(`Total events before deduplication: ${allEvents.length}`);
-    
-    let events = deduplicateEvents(allEvents);
-    console.log(`After deduplication: ${events.length} (removed ${allEvents.length - events.length} duplicates)`);
-    
-    // ========================================
-    // FILTER 1: Distance
-    // ========================================
-    if (location && filters?.distance) {
-      const beforeCount = events.length;
-      events = events.filter(event => {
-        const hasValidCoords = 
-          event.latitude != null && 
-          event.longitude != null &&
-          !isNaN(parseFloat(event.latitude)) && 
-          !isNaN(parseFloat(event.longitude));
-        
-        if (!hasValidCoords) {
-          console.log(`Excluding event without valid coords: "${event.title}" (${event.source})`);
-          return false;
-        }
-        
-        const distance = calculateDistance(
-          location.latitude,
-          location.longitude,
-          parseFloat(event.latitude),
-          parseFloat(event.longitude)
-        );
-        
-        event.distance = `${Math.round(distance)} mi`;
-        
-        if (distance > filters.distance) {
-          return false;
-        }
-        
-        return true;
-      });
-      console.log(`After distance filter: ${events.length} (removed ${beforeCount - events.length})`);
-    }
-    
-    // ========================================
-    // FILTER 2: Already swiped
-    // ========================================
-    if (userId) {
-      const beforeCount = events.length;
-      // Note: this re-reads the same users/{uid} doc AuthContext already fetched.
-      perfMark('net:swiped-ids-sent');
-      const swipedIds = await getSwipedEventIds(userId);
-      perfMark('net:swiped-ids-received', { count: swipedIds.length });
-      events = events.filter(event => !swipedIds.includes(event.id));
-      console.log(`After swiped filter: ${events.length} (removed ${beforeCount - events.length})`);
-    }
-    
-    // ========================================
-    // FILTER 3: Categories
-    // ========================================
-    const selectedCategories = filters?.categories || [];
-    const allCategoriesSelected = selectedCategories.length === 0 || 
-                                   selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
-    
-    if (selectedCategories.length > 0 && !allCategoriesSelected) {
-      const beforeCount = events.length;
-      
-      events = events.filter(event => {
-        const eventCategory = (event.category || '').toLowerCase();
-        
-        if (!eventCategory || eventCategory === 'other') {
-          return true;
-        }
-        
-        return selectedCategories.includes(eventCategory);
-      });
-      
-      console.log(`After category filter: ${events.length} (removed ${beforeCount - events.length})`);
-    }
-    
-    // ========================================
-    // FILTER 4: Time range
-    // ========================================
-    if (filters?.timeRange) {
-      const beforeCount = events.length;
-      const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
-      
-      console.log(`Time range "${filters.timeRange}": ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      
-      events = events.filter(event => {
-        if (!event.date) return false;
-        
-        const eventDate = parseEventDate(event.date);
-        if (!eventDate) {
-          return false;
-        }
-        
-        return eventDate >= startDate && eventDate <= endDate;
-      });
-      
-      console.log(`After time filter: ${events.length} (removed ${beforeCount - events.length})`);
-    }
-    
-    // ========================================
-    // GROUP: Merge same event with multiple dates
-    // ========================================
-    {
-      const beforeCount = events.length;
-      events = groupMultiDateEvents(events);
-      const grouped = beforeCount - events.length;
-      if (grouped > 0) {
-        console.log(`After multi-date grouping: ${events.length} (merged ${grouped} duplicate dates)`);
-      }
-    }
-    
-    // ========================================
-    // SORT: By date (soonest first)
-    // ========================================
-    events.sort((a, b) => {
-      if (!a.date) return 1;
-      if (!b.date) return -1;
-      
-      let dateA = parseEventDate(a.date);
-      let dateB = parseEventDate(b.date);
-      
-      if (dateA && a.time) {
-        const [hours, minutes] = a.time.split(':').map(Number);
-        dateA.setHours(hours || 0, minutes || 0);
-      }
-      if (dateB && b.time) {
-        const [hours, minutes] = b.time.split(':').map(Number);
-        dateB.setHours(hours || 0, minutes || 0);
-      }
-      
-      return (dateA || 0) - (dateB || 0);
+    perfMark('net:cloudfn-sent');
+    const result = await getEventsForLocation({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      radius,
     });
-    
-    console.log(`=== Final event count: ${events.length} ===`);
-    // Everything since net:swiped-ids-received is synchronous CPU work on the
-    // JS thread: dedupe, distance/category/time filters, grouping, sort.
-    perfMark('compute:pipeline-done', { events: events.length });
+    perfMark('net:cloudfn-received', {
+      events: result.data?.events?.length ?? 0,
+      fromCache: result.data?.fromCache,
+    });
+    if (!result.data.success) return [];
+    // Add placeholder images for events missing them
+    return (result.data.events || []).map(event => ({
+      ...event,
+      image: event.image || CATEGORY_PLACEHOLDERS[event.category] || CATEGORY_PLACEHOLDERS['other'],
+    }));
+  } catch (functionError) {
+    perfMark('net:cloudfn-received', { error: true });
+    throw functionError;
+  }
+};
 
-    return { success: true, events };
+const sortByDate = (events) => {
+  const withTime = (event) => {
+    const date = parseEventDate(event.date);
+    if (date && event.time) {
+      const [hours, minutes] = event.time.split(':').map(Number);
+      date.setHours(hours || 0, minutes || 0);
+    }
+    return date;
+  };
+  return events.sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return (withTime(a) || 0) - (withTime(b) || 0);
+  });
+};
+
+// Filters run before dedupe/grouping so those only see nearby, unswiped events.
+const processEvents = (rawEvents, location, filters, swipedIds) => {
+  let events = rawEvents;
+
+  // Distance
+  if (location && filters?.distance) {
+    events = events.filter(event => {
+      const hasValidCoords =
+        event.latitude != null &&
+        event.longitude != null &&
+        !isNaN(parseFloat(event.latitude)) &&
+        !isNaN(parseFloat(event.longitude));
+      if (!hasValidCoords) return false;
+
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        parseFloat(event.latitude),
+        parseFloat(event.longitude)
+      );
+      event.distance = `${Math.round(distance)} mi`;
+      return distance <= filters.distance;
+    });
+  }
+
+  // Already swiped
+  if (swipedIds.size) {
+    events = events.filter(event => !swipedIds.has(event.id));
+  }
+
+  // Categories
+  const selectedCategories = filters?.categories || [];
+  const allCategoriesSelected = selectedCategories.length === 0 ||
+                                 selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
+  if (selectedCategories.length > 0 && !allCategoriesSelected) {
+    events = events.filter(event => {
+      const eventCategory = (event.category || '').toLowerCase();
+      if (!eventCategory || eventCategory === 'other') return true;
+      return selectedCategories.includes(eventCategory);
+    });
+  }
+
+  // Time range
+  if (filters?.timeRange) {
+    const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
+    events = events.filter(event => {
+      if (!event.date) return false;
+      const eventDate = parseEventDate(event.date);
+      return !!eventDate && eventDate >= startDate && eventDate <= endDate;
+    });
+  }
+
+  events = deduplicateEvents(events);
+  events = groupMultiDateEvents(events);
+  return sortByDate(events);
+};
+
+/**
+ * @param onUpdate optional (events, { final }) callback, called with the
+ *   processed events each time a source arrives. The resolved value is the
+ *   same as the last call.
+ */
+export const getEvents = async (userId, location, filters = {}, onUpdate) => {
+  try {
+    const radius = filters?.distance || 50;
+    const swipedP = userId
+      ? (perfMark('net:swiped-ids-sent'),
+         getSwipedEventIds(userId).then(ids => {
+           perfMark('net:swiped-ids-received', { count: ids.length });
+           return new Set(ids);
+         }))
+      : Promise.resolve(new Set());
+
+    const sources = [
+      fetchFirestoreEvents(location, radius),
+      fetchApiEvents(location, radius),
+    ];
+
+    const received = [];
+    let latest = [];
+    let succeeded = 0;
+    let pending = sources.length;
+
+    await Promise.all(sources.map(async (sourceP) => {
+      let ok = true;
+      try {
+        received.push(...await sourceP);
+        succeeded++;
+      } catch (error) {
+        ok = false;
+        console.error('Event source failed:', error);
+      }
+      const swipedIds = await swipedP;
+      pending--;
+      const final = pending === 0;
+      // A failed source adds nothing — only report if there's news, or to
+      // signal completion once something has succeeded. If every source
+      // fails, callers keep whatever they were showing.
+      if (!ok && !(final && succeeded > 0)) return;
+      latest = processEvents(received, location, filters, swipedIds);
+      console.log(`Events: ${latest.length} after ${sources.length - pending}/${sources.length} sources`);
+      onUpdate?.(latest, { final });
+    }));
+
+    if (succeeded === 0) throw new Error('All event sources failed');
+
+    perfMark('compute:pipeline-done', { events: latest.length });
+    return { success: true, events: latest };
   } catch (error) {
     console.error('Error getting events:', error);
     return { success: false, error: error.message, events: [] };
