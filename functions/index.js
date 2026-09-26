@@ -13,7 +13,7 @@ const db = admin.firestore();
 // EXISTING REPORT NOTIFICATION FUNCTIONS
 // ============================================================
 
-const ADMIN_EMAIL = 'your-email@example.com'; // Change this!
+const ADMIN_EMAIL = 'zcfshr@gmail.com';
 
 /**
  * Triggered when a new report is created
