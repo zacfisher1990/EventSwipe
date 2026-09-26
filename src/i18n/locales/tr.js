@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Bugün: %{title}",
+    reminderTomorrow: "Yarın: %{title}",
+    offerTitle: "Hiçbir etkinliği kaçırma",
+    offerBody: "Kaydettiğin etkinlikler başlamadan önce hatırlatma ve her hafta sonu yakınındaki etkinlikler hakkında bildirim al.",
+    turnOn: "Aç",
+    settingTitle: "Bildirimler",
+    settingText: "Etkinlik hatırlatmaları ve hafta sonu önerileri",
+    deniedTitle: "Bildirimler kapalı",
+    deniedBody: "Telefonunun Ayarlar bölümünden EventSwipe bildirimlerini aç.",
+    openSettings: "Ayarları Aç",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'GEÇÇ',

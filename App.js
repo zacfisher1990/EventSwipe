@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { EventCacheProvider } from './src/context/EventCacheContext';
@@ -10,8 +11,21 @@ import TabNavigator from './src/navigation/TabNavigator';
 import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
 import { perfMark } from './src/utils/perf';
 
+const navigationRef = createNavigationContainerRef();
+
 function AppContent() {
   const { user, isLoading, guestUnavailable, authPrompt, closeAuthPrompt } = useAuth();
+  const [navReady, setNavReady] = useState(false);
+
+  // Tapping a notification opens the tab it points at (reminders → Saved,
+  // weekend roundup → Discover). Covers both cold starts and running app.
+  const lastResponse = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    const screen = lastResponse?.notification.request.content.data?.screen;
+    if (screen && navReady && navigationRef.isReady()) {
+      navigationRef.navigate(screen);
+    }
+  }, [lastResponse, navReady]);
 
   if (!isLoading) {
     // Auth has settled: firebase restored (or failed to restore) the session AND
@@ -30,7 +44,7 @@ function AppContent() {
   
   return user ? (
     <EventCacheProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef} onReady={() => setNavReady(true)}>
         <TabNavigator />
       </NavigationContainer>
       <Modal

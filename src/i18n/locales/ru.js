@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Сегодня: %{title}",
+    reminderTomorrow: "Завтра: %{title}",
+    offerTitle: "Не пропусти ни одного события",
+    offerBody: "Получай напоминания перед сохранёнными событиями и подборку событий рядом с тобой каждые выходные.",
+    turnOn: "Включить",
+    settingTitle: "Уведомления",
+    settingText: "Напоминания и идеи на выходные",
+    deniedTitle: "Уведомления выключены",
+    deniedBody: "Включи уведомления EventSwipe в настройках телефона.",
+    openSettings: "Открыть настройки",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'НЕТ',

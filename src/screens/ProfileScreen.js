@@ -7,7 +7,8 @@ import {
   ScrollView, 
   Alert, 
   Platform,
-  Linking 
+  Linking,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,12 +19,14 @@ import { db } from '../config/firebase';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import i18n from '../i18n';
+import { isEnabled, hasPermission, enableNotifications, disableNotifications } from '../services/notificationService';
 
 export default function ProfileScreen() {
   const { user, signOut, requireAccount } = useAuth();
   const isGuest = !!user?.isAnonymous;
   const [stats, setStats] = useState({ saved: 0, swiped: 0 });
   const [loading, setLoading] = useState(false);
+  const [notificationsOn, setNotificationsOn] = useState(false);
 
   const loadStats = async () => {
     if (!user?.uid) return;
@@ -41,8 +44,30 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadStats();
+      // Reflects the OS setting too, in case it was turned off in Settings
+      (async () => setNotificationsOn((await isEnabled()) && (await hasPermission())))();
     }, [user])
   );
+
+  const handleToggleNotifications = async (value) => {
+    setNotificationsOn(value);
+    if (!value) {
+      await disableNotifications(user?.uid);
+      return;
+    }
+    const on = await enableNotifications(user?.uid);
+    setNotificationsOn(on);
+    if (!on) {
+      Alert.alert(
+        i18n.t('notifications.deniedTitle'),
+        i18n.t('notifications.deniedBody'),
+        [
+          { text: i18n.t('common.cancel'), style: 'cancel' },
+          { text: i18n.t('notifications.openSettings'), onPress: () => Linking.openSettings() },
+        ]
+      );
+    }
+  };
 
   const handleResetSwiped = async () => {
     const doReset = async () => {
@@ -210,6 +235,23 @@ export default function ProfileScreen() {
         {/* Preferences Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{i18n.t('profile.preferences')}</Text>
+
+          {Platform.OS !== 'web' && (
+            <View style={styles.menuItem}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E8FAF8' }]}>
+                <Ionicons name="notifications-outline" size={20} color="#4ECDC4" />
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuText}>{i18n.t('notifications.settingTitle')}</Text>
+                <Text style={styles.menuSubtext}>{i18n.t('notifications.settingText')}</Text>
+              </View>
+              <Switch
+                value={notificationsOn}
+                onValueChange={handleToggleNotifications}
+                trackColor={{ true: '#4ECDC4' }}
+              />
+            </View>
+          )}
           
           <TouchableOpacity style={styles.menuItem} onPress={handleResetSwiped} disabled={loading}>
             <View style={[styles.menuIcon, { backgroundColor: '#E8FAF8' }]}>

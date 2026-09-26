@@ -319,6 +319,185 @@ exports.cleanupExpiredCache = functions.pubsub
   });
 
 // ============================================================
+// WEEKEND ROUNDUP PUSH NOTIFICATION
+// Thursday 5pm in each user's time zone: "23 events near you this weekend".
+// Users opt in from the app, which stores pushToken, timeZone, language and a
+// rounded searchArea { lat, lng, radius } on users/{uid}.
+// ============================================================
+
+const ROUNDUP_MIN_EVENTS = 3;
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+
+const ROUNDUP_TEXT = {
+  en: ['%{count} events near you this weekend', 'Swipe to find your weekend plans.'],
+  es: ['%{count} eventos cerca de ti este fin de semana', 'Desliza para encontrar tus planes del finde.'],
+  pt: ['%{count} eventos perto de você neste fim de semana', 'Deslize para encontrar seus planos para o fim de semana.'],
+  tr: ['Bu hafta sonu yakınında %{count} etkinlik var', 'Hafta sonu planını bulmak için kaydır.'],
+  id: ['%{count} acara di dekatmu akhir pekan ini', 'Geser untuk menemukan rencana akhir pekanmu.'],
+  de: ['%{count} Events in deiner Nähe an diesem Wochenende', 'Swipe dich zu deinen Wochenendplänen.'],
+  fr: ['%{count} événements près de chez toi ce week-end', 'Swipe pour trouver tes plans du week-end.'],
+  ru: ['%{count} событий рядом с тобой в эти выходные', 'Свайпай и находи планы на выходные.'],
+  uk: ['%{count} подій поруч із тобою цими вихідними', 'Свайпай і знаходь плани на вихідні.'],
+  it: ['%{count} eventi vicino a te questo weekend', 'Scorri per trovare i tuoi piani per il weekend.'],
+  pl: ['%{count} wydarzeń w pobliżu w ten weekend', 'Przesuwaj i znajdź plany na weekend.'],
+  ja: ['今週末、近くで%{count}件のイベント', 'スワイプして週末の予定を見つけよう。'],
+  ko: ['이번 주말 근처 이벤트 %{count}개', '스와이프해서 주말 계획을 찾아보세요.'],
+  th: ['สุดสัปดาห์นี้มี %{count} อีเวนต์ใกล้คุณ', 'ปัดเพื่อหาแผนสุดสัปดาห์ของคุณ'],
+  vi: ['%{count} sự kiện gần bạn cuối tuần này', 'Vuốt để tìm kế hoạch cuối tuần của bạn.'],
+  ar: ['%{count} فعالية قريبة منك في عطلة نهاية الأسبوع', 'اسحب لتجد خططك لعطلة نهاية الأسبوع.'],
+  he: ['%{count} אירועים קרובים אליכם בסוף השבוע', 'החליקו כדי למצוא תוכניות לסוף השבוע.'],
+  'zh-Hans': ['本周末你附近有 %{count} 场活动', '滑一滑，找到你的周末计划。'],
+  'zh-Hant': ['本週末你附近有 %{count} 場活動', '滑一滑，找到你的週末計畫。'],
+};
+
+// Matches the app's i18n locale handling (e.g. 'en-US' → 'en', 'zh-TW' → 'zh-Hant')
+const roundupText = (language, count) => {
+  const lang = language || 'en';
+  const base = lang.split('-')[0];
+  const key = ROUNDUP_TEXT[lang] ? lang
+    : base === 'zh' ? (/TW|HK|MO|Hant/.test(lang) ? 'zh-Hant' : 'zh-Hans')
+    : ROUNDUP_TEXT[base] ? base : 'en';
+  const [title, body] = ROUNDUP_TEXT[key];
+  return { title: title.replace('%{count}', count), body };
+};
+
+const distanceMiles = (lat1, lng1, lat2, lng2) => {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+// Event dates are 'YYYY-MM-DD' or 'MM/DD/YYYY'
+const normalizeDate = (date) => {
+  if (!date) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(date)) return date.slice(0, 10);
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(date);
+  return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null;
+};
+
+// Local weekday/hour/date for a time zone, or null if the zone is invalid
+const localTime = (now, timeZone) => {
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone, weekday: 'short', hour: 'numeric', hourCycle: 'h23',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).formatToParts(now).map((p) => [p.type, p.value])
+    );
+    return { weekday: parts.weekday, hour: Number(parts.hour), y: +parts.year, m: +parts.month, d: +parts.day };
+  } catch {
+    return null;
+  }
+};
+
+// Friday–Sunday after a local Thursday, as YYYY-MM-DD
+const weekendDates = ({ y, m, d }) =>
+  new Set([1, 2, 3].map((offset) => new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10)));
+
+// Event ids within the area on the given dates, from user-posted/scraped
+// events and the cached Ticketmaster results for that area.
+const weekendEventIds = async ({ lat, lng, radius }, dates) => {
+  const band = radius / 69;
+  const [snap, cacheDoc] = await Promise.all([
+    db.collection('events')
+      .where('latitude', '>=', lat - band)
+      .where('latitude', '<=', lat + band)
+      .get(),
+    db.collection(CACHE_COLLECTION).doc(createCacheKey(lat, lng, radius)).get(),
+  ]);
+
+  const candidates = [
+    ...snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => e.active === true),
+    ...(cacheDoc.exists ? cacheDoc.data().events || [] : []),
+  ];
+
+  const ids = new Set();
+  for (const e of candidates) {
+    const eLat = parseFloat(e.latitude);
+    const eLng = parseFloat(e.longitude);
+    if (!dates.has(normalizeDate(e.date)) || isNaN(eLat) || isNaN(eLng)) continue;
+    if (distanceMiles(lat, lng, eLat, eLng) <= radius) ids.add(e.id);
+  }
+  return ids;
+};
+
+const sendExpoPush = async (messages) => {
+  const tickets = [];
+  for (let i = 0; i < messages.length; i += 100) {
+    const res = await fetch(EXPO_PUSH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(messages.slice(i, i + 100)),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(`Expo push failed: ${JSON.stringify(json)}`);
+    tickets.push(...json.data);
+  }
+  return tickets;
+};
+
+exports.weekendRoundup = functions.pubsub
+  // Hourly on Thursday and Friday UTC covers Thursday 5pm in every time zone
+  .schedule('0 * * * 4,5')
+  .timeZone('UTC')
+  .onRun(async () => {
+    const now = new Date();
+    const users = await db.collection('users').where('notificationsEnabled', '==', true).get();
+
+    const due = [];
+    for (const doc of users.docs) {
+      const u = doc.data();
+      if (!u.pushToken || !u.searchArea || !u.timeZone) continue;
+      const local = localTime(now, u.timeZone);
+      if (!local || local.weekday !== 'Thu' || local.hour !== 17) continue;
+      if (u.lastRoundupAt && now - u.lastRoundupAt.toDate() < 5 * 24 * 60 * 60 * 1000) continue;
+      due.push({ ref: doc.ref, u, local });
+    }
+    if (!due.length) return null;
+
+    // Users in the same area and time zone share a lookup
+    const areaCache = new Map();
+    const messages = [];
+    const recipients = [];
+    for (const { ref, u, local } of due) {
+      const dates = weekendDates(local);
+      const key = `${JSON.stringify(u.searchArea)}|${[...dates].join()}`;
+      if (!areaCache.has(key)) areaCache.set(key, weekendEventIds(u.searchArea, dates));
+      const ids = await areaCache.get(key);
+
+      // Only count events this user hasn't swiped yet
+      const swiped = new Set(u.swipedEvents || []);
+      const count = [...ids].filter((id) => !swiped.has(id)).length;
+      if (count < ROUNDUP_MIN_EVENTS) continue;
+
+      const { title, body } = roundupText(u.language, count);
+      messages.push({ to: u.pushToken, title, body, data: { screen: 'Discover' }, channelId: 'default' });
+      recipients.push(ref);
+    }
+    if (!messages.length) return null;
+
+    const tickets = await sendExpoPush(messages);
+    const batch = db.batch();
+    tickets.forEach((ticket, i) => {
+      if (ticket.status === 'ok') {
+        batch.update(recipients[i], { lastRoundupAt: Timestamp.fromDate(now) });
+      } else if (ticket.details?.error === 'DeviceNotRegistered') {
+        // App uninstalled or notifications revoked
+        batch.update(recipients[i], { pushToken: FieldValue.delete() });
+      } else {
+        console.error('Push error:', ticket.message);
+      }
+    });
+    await batch.commit();
+
+    console.log(`Weekend roundup: sent ${messages.length} of ${due.length} due`);
+    return null;
+  });
+
+// ============================================================
 // EVENTBRITE SCRAPER FUNCTIONS
 // ============================================================
 

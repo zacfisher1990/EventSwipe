@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "今日：%{title}",
+    reminderTomorrow: "明日：%{title}",
+    offerTitle: "イベントを見逃さない",
+    offerBody: "保存したイベントの前にリマインダーを受け取り、毎週末には近くのイベント情報をお届けします。",
+    turnOn: "オンにする",
+    settingTitle: "通知",
+    settingText: "イベントのリマインダーと週末のおすすめ",
+    deniedTitle: "通知がオフになっています",
+    deniedBody: "端末の設定でEventSwipeの通知をオンにしてください。",
+    openSettings: "設定を開く",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'パス',

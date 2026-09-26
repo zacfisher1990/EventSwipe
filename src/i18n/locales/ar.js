@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "اليوم: %{title}",
+    reminderTomorrow: "غدًا: %{title}",
+    offerTitle: "لا تفوّت أي فعالية",
+    offerBody: "احصل على تذكير قبل بدء فعالياتك المحفوظة، وتنبيه بالفعاليات القريبة منك كل عطلة نهاية أسبوع.",
+    turnOn: "تفعيل",
+    settingTitle: "الإشعارات",
+    settingText: "تذكيرات الفعاليات واقتراحات عطلة نهاية الأسبوع",
+    deniedTitle: "الإشعارات متوقفة",
+    deniedBody: "فعّل إشعارات EventSwipe من إعدادات هاتفك.",
+    openSettings: "فتح الإعدادات",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'تخطي',

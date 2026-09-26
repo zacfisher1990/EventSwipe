@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "วันนี้: %{title}",
+    reminderTomorrow: "พรุ่งนี้: %{title}",
+    offerTitle: "ไม่พลาดทุกอีเวนต์",
+    offerBody: "รับการแจ้งเตือนก่อนอีเวนต์ที่คุณบันทึกไว้จะเริ่ม และรับข่าวอีเวนต์ใกล้คุณทุกสุดสัปดาห์",
+    turnOn: "เปิด",
+    settingTitle: "การแจ้งเตือน",
+    settingText: "แจ้งเตือนอีเวนต์และไอเดียสุดสัปดาห์",
+    deniedTitle: "การแจ้งเตือนปิดอยู่",
+    deniedBody: "เปิดการแจ้งเตือนของ EventSwipe ในการตั้งค่าโทรศัพท์ของคุณ",
+    openSettings: "เปิดการตั้งค่า",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'ข้าม',

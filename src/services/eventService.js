@@ -22,6 +22,8 @@ import { trackView, trackSave } from './analyticsService';
 // API events are fetched via Cloud Function (getEventsForLocation)
 import i18n from '../i18n';
 import { perfMark } from '../utils/perf';
+import { parseEventDate } from '../utils/dates';
+import { scheduleEventReminder, cancelEventReminder } from './notificationService';
 
 // Initialize Cloud Functions
 const functions = getFunctions();
@@ -198,28 +200,6 @@ const CATEGORY_PLACEHOLDERS = {
   'other': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
 };
 
-// Parse date string in multiple formats
-const parseEventDate = (dateString) => {
-  if (!dateString) return null;
-  
-  if (dateString.includes('-') && dateString.indexOf('-') === 4) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    if (year && month && day) {
-      return new Date(year, month - 1, day);
-    }
-  }
-  
-  if (dateString.includes('/')) {
-    const [month, day, year] = dateString.split('/').map(Number);
-    if (month && day && year) {
-      return new Date(year, month - 1, day);
-    }
-  }
-  
-  const date = new Date(dateString);
-  return isNaN(date.getTime()) ? null : date;
-};
-
 // Get time range dates
 const getTimeRangeDates = (timeRange) => {
   const now = new Date();
@@ -307,9 +287,10 @@ export const saveEvent = async (userId, event) => {
       rightSwipes: increment(1),
       lastSwipeAt: Timestamp.now(),
     });
-    // Track view + save (fire and forget — don't block the UI)
+    // Track view + save, schedule reminder (fire and forget — don't block the UI)
     trackView(event.id);
     trackSave(event.id, event.title, event.source);
+    scheduleEventReminder(event);
     return { success: true };
   } catch (error) {
     console.error('Error saving event:', error);
@@ -368,6 +349,7 @@ export const undoSaveEvent = async (userId, event) => {
       swipeCount: increment(-1),
       rightSwipes: increment(-1),
     });
+    cancelEventReminder(event.id);
     return { success: true };
   } catch (error) {
     console.error('Error undoing save:', error);
@@ -387,6 +369,7 @@ export const unsaveEvent = async (userId, eventId) => {
     await updateDoc(userRef, {
       savedEvents: updatedEvents
     });
+    cancelEventReminder(eventId);
     return { success: true };
   } catch (error) {
     console.error('Error unsaving event:', error);

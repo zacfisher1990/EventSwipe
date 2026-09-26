@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "오늘: %{title}",
+    reminderTomorrow: "내일: %{title}",
+    offerTitle: "이벤트를 놓치지 마세요",
+    offerBody: "저장한 이벤트가 시작되기 전에 알림을 받고, 매주 주말 근처 이벤트 소식도 받아보세요.",
+    turnOn: "켜기",
+    settingTitle: "알림",
+    settingText: "이벤트 알림 및 주말 추천",
+    deniedTitle: "알림이 꺼져 있어요",
+    deniedBody: "휴대폰 설정에서 EventSwipe 알림을 켜주세요.",
+    openSettings: "설정 열기",
+  },
+
   // Swipe labels
   swipe: {
     nope: '패스',

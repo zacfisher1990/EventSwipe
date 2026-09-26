@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "היום: %{title}",
+    reminderTomorrow: "מחר: %{title}",
+    offerTitle: "לא לפספס אף אירוע",
+    offerBody: "קבלו תזכורת לפני שהאירועים ששמרתם מתחילים, ועדכון על אירועים קרובים בכל סוף שבוע.",
+    turnOn: "הפעלה",
+    settingTitle: "התראות",
+    settingText: "תזכורות לאירועים והמלצות לסוף השבוע",
+    deniedTitle: "ההתראות כבויות",
+    deniedBody: "הפעילו את ההתראות של EventSwipe בהגדרות הטלפון.",
+    openSettings: "פתיחת ההגדרות",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'דלג',

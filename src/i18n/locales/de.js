@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Heute: %{title}",
+    reminderTomorrow: "Morgen: %{title}",
+    offerTitle: "Verpasse kein Event",
+    offerBody: "Erhalte eine Erinnerung, bevor deine gespeicherten Events beginnen, und jedes Wochenende Tipps für Events in deiner Nähe.",
+    turnOn: "Aktivieren",
+    settingTitle: "Mitteilungen",
+    settingText: "Event-Erinnerungen und Wochenendtipps",
+    deniedTitle: "Mitteilungen sind deaktiviert",
+    deniedBody: "Aktiviere die Mitteilungen für EventSwipe in den Einstellungen deines Telefons.",
+    openSettings: "Einstellungen öffnen",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'NEIN',

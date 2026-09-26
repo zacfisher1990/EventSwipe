@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Today: %{title}",
+    reminderTomorrow: "Tomorrow: %{title}",
+    offerTitle: "Never miss an event",
+    offerBody: "Get a reminder before your saved events start, plus a heads-up on events near you each weekend.",
+    turnOn: "Turn on",
+    settingTitle: "Notifications",
+    settingText: "Event reminders and weekend picks",
+    deniedTitle: "Notifications are off",
+    deniedBody: "Turn on notifications for EventSwipe in your phone's Settings.",
+    openSettings: "Open Settings",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'NOPE',

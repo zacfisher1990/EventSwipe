@@ -144,6 +144,7 @@ function Overview({ user }) {
       events: u.reduce((s, x) => s + x.events.length, 0),
       ios: u.filter((x) => x.platform === 'ios').length,
       android: u.filter((x) => x.platform === 'android').length,
+      notifications: u.filter((x) => x.notifications).length,
     };
   }, [data]);
 
@@ -186,6 +187,7 @@ function Overview({ user }) {
           <Tile label="Active (7d)" value={totals.active7} sub={`${totals.active30} in 30d`} />
           <Tile label="Swipes tracked" value={totals.swipes} sub="since counter launch" />
           <Tile label="Events posted" value={totals.events} />
+          <Tile label="Notifications on" value={totals.notifications} />
           <Tile
             label="iOS / Android"
             value={`${totals.ios} / ${totals.android}`}
@@ -289,6 +291,7 @@ function UserDetail({ u }) {
       <div className="facts">
         <span>Last swipe: <b>{fmtAgo(u.lastSwipeAt)}</b></span>
         <span>Last sign-in: <b>{fmtAgo(u.lastSignIn)}</b></span>
+        <span>Notifications: <b>{u.notifications ? 'on' : 'off'}</b></span>
         <span>Distinct events swiped: <b>{u.swipedEventIds}</b></span>
         <span>Currently saved: <b>{u.savedEvents}</b></span>
       </div>

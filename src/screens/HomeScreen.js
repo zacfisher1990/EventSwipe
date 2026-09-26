@@ -7,6 +7,7 @@ import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import { submitReport } from '../services/reportService';
+import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
 import { perfMark, perfMarkAfterPaint, perfSummary } from '../utils/perf';
 
@@ -71,6 +72,9 @@ export default function HomeScreen() {
         if (user.isAnonymous && !guestPromptShown.current) {
           guestPromptShown.current = true;
           setTimeout(() => requireAccount('save'), 400);
+        } else {
+          // Offered once ever, on a save that isn't already showing a prompt
+          setTimeout(() => maybeOfferNotifications(user.uid), 400);
         }
       } else {
         console.error('Failed to save event:', result.error);

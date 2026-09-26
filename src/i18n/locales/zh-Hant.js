@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "今天：%{title}",
+    reminderTomorrow: "明天：%{title}",
+    offerTitle: "不錯過任何活動",
+    offerBody: "在已儲存的活動開始前收到提醒，每個週末還會推送你附近的活動。",
+    turnOn: "開啟",
+    settingTitle: "通知",
+    settingText: "活動提醒和週末推薦",
+    deniedTitle: "通知已關閉",
+    deniedBody: "請在手機設定中開啟 EventSwipe 的通知。",
+    openSettings: "開啟設定",
+  },
+
   // Swipe labels
   swipe: {
     nope: '跳過',

@@ -16,6 +16,9 @@ export default {
       supportsTablet: false,
       bundleIdentifier: "com.eventswipeapp.eventswipe",
       buildNumber: "21",
+      entitlements: {
+        "aps-environment": "development"
+      },
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_KEY,
       },
@@ -35,6 +38,7 @@ export default {
         barStyle: "dark-content"
       },
       package: "com.eventswipeapp.eventswipe",
+      googleServicesFile: "./android/app/google-services.json",
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_ANDROID_KEY,
@@ -54,7 +58,10 @@ export default {
         locationWhenInUsePermission: "EventSwipe uses your location to find events near you."
       }],
       "@react-native-community/datetimepicker",
-      "expo-localization"
+      "expo-localization",
+      ["expo-notifications", {
+        color: "#4ECDC4"
+      }]
     ],
     extra: {
       eas: {

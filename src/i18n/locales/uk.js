@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Сьогодні: %{title}",
+    reminderTomorrow: "Завтра: %{title}",
+    offerTitle: "Не пропусти жодної події",
+    offerBody: "Отримуй нагадування перед збереженими подіями та добірку подій поруч щовихідних.",
+    turnOn: "Увімкнути",
+    settingTitle: "Сповіщення",
+    settingText: "Нагадування та ідеї на вихідні",
+    deniedTitle: "Сповіщення вимкнено",
+    deniedBody: "Увімкни сповіщення EventSwipe у налаштуваннях телефона.",
+    openSettings: "Відкрити налаштування",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'НІ',

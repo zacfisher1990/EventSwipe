@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Hôm nay: %{title}",
+    reminderTomorrow: "Ngày mai: %{title}",
+    offerTitle: "Không bỏ lỡ sự kiện nào",
+    offerBody: "Nhận lời nhắc trước khi sự kiện đã lưu bắt đầu, cùng thông tin về sự kiện gần bạn mỗi cuối tuần.",
+    turnOn: "Bật",
+    settingTitle: "Thông báo",
+    settingText: "Nhắc sự kiện và gợi ý cuối tuần",
+    deniedTitle: "Thông báo đang tắt",
+    deniedBody: "Hãy bật thông báo cho EventSwipe trong Cài đặt của điện thoại.",
+    openSettings: "Mở Cài đặt",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'BỎ QUA',

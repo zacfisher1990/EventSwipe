@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Hari ini: %{title}",
+    reminderTomorrow: "Besok: %{title}",
+    offerTitle: "Jangan lewatkan acara apa pun",
+    offerBody: "Dapatkan pengingat sebelum acara yang kamu simpan dimulai, plus info acara di dekatmu setiap akhir pekan.",
+    turnOn: "Aktifkan",
+    settingTitle: "Notifikasi",
+    settingText: "Pengingat acara dan pilihan akhir pekan",
+    deniedTitle: "Notifikasi nonaktif",
+    deniedBody: "Aktifkan notifikasi EventSwipe di Pengaturan ponselmu.",
+    openSettings: "Buka Pengaturan",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'LEWAT',

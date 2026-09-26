@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import { getEvents } from '../services/eventService';
 import { useAuth } from './AuthContext';
 import { perfMark } from '../utils/perf';
+import { updateSearchArea } from '../services/notificationService';
 
 const EventCacheContext = createContext(null);
 
@@ -202,6 +203,10 @@ export function EventCacheProvider({ children }) {
           mergeIntoDeck(list);
         }
       };
+
+      if (!currentFilters.isCustomLocation) {
+        updateSearchArea(user?.uid, location, currentFilters.distance);
+      }
 
       perfMark('net:request-sent', { hasLocation: !!location });
       const result = await getEvents(user?.uid, location, currentFilters, onUpdate);

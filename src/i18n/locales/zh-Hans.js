@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "今天：%{title}",
+    reminderTomorrow: "明天：%{title}",
+    offerTitle: "不错过任何活动",
+    offerBody: "在已保存的活动开始前收到提醒，每个周末还会推送你附近的活动。",
+    turnOn: "开启",
+    settingTitle: "通知",
+    settingText: "活动提醒和周末推荐",
+    deniedTitle: "通知已关闭",
+    deniedBody: "请在手机设置中开启 EventSwipe 的通知。",
+    openSettings: "打开设置",
+  },
+
   // Swipe labels
   swipe: {
     nope: '跳过',

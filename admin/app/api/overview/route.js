@@ -88,6 +88,7 @@ export async function GET(request) {
       lastActiveAt: toIso(d.lastActiveAt),
       platform: d.platform || null,
       osVersion: d.osVersion || null,
+      notifications: !!(d.notificationsEnabled && d.pushToken),
       // Exact counters, only recorded since the in-app counter shipped
       swipeCount: d.swipeCount ?? null,
       rightSwipes: d.rightSwipes ?? null,

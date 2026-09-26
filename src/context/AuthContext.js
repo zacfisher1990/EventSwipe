@@ -14,6 +14,7 @@ import { doc, setDoc, getDoc, updateDoc, serverTimestamp, arrayUnion, increment 
 import { auth, db } from '../config/firebase';
 import i18n from '../i18n';
 import { perfMark } from '../utils/perf';
+import { syncNotifications, detachDevice } from '../services/notificationService';
 
 // Map Firebase error codes to translated messages
 const getAuthErrorMessage = (error) => {
@@ -97,6 +98,7 @@ export const AuthProvider = ({ children }) => {
           osVersion: String(Platform.Version),
           lastActiveAt: serverTimestamp(),
         }, { merge: true }).catch(() => {});
+        syncNotifications(firebaseUser.uid);
       } else {
         setUser(null);
         // Let people browse before signing up: start a guest session. The
@@ -167,6 +169,7 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      await detachDevice(auth.currentUser?.uid);
       await firebaseSignOut(auth);
     } catch (error) {
       console.error('Sign out error:', error);

@@ -257,6 +257,20 @@ export default {
     },
   },
 
+  // Notifications
+  notifications: {
+    reminderToday: "Hoje: %{title}",
+    reminderTomorrow: "Amanhã: %{title}",
+    offerTitle: "Não perca nenhum evento",
+    offerBody: "Receba um lembrete antes dos seus eventos salvos e um aviso sobre eventos perto de você todo fim de semana.",
+    turnOn: "Ativar",
+    settingTitle: "Notificações",
+    settingText: "Lembretes e dicas para o fim de semana",
+    deniedTitle: "As notificações estão desativadas",
+    deniedBody: "Ative as notificações do EventSwipe nos Ajustes do seu celular.",
+    openSettings: "Abrir Ajustes",
+  },
+
   // Swipe labels
   swipe: {
     nope: 'NÃO',

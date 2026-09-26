@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "989696282130",
+    "project_id": "eventswipe-6a924",
+    "storage_bucket": "eventswipe-6a924.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989696282130:android:feb73265a2c9de04e8d2cb",
+        "android_client_info": {
+          "package_name": "com.eventswipeapp.eventswipe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrPOb8rY3bnIxPyeBJVUVehZO9c9Il2F8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
