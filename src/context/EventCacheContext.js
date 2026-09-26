@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { getEvents } from '../services/eventService';
 import { useAuth } from './AuthContext';
+import { perfMark } from '../utils/perf';
 
 const EventCacheContext = createContext(null);
 
@@ -26,6 +27,10 @@ const prefetchImages = (eventList, fromIndex, count) => {
 };
 
 export function EventCacheProvider({ children }) {
+  // Only mounts after auth resolves — the location + fetch chain cannot start
+  // any earlier than this point.
+  perfMark('cache:provider-mounted');
+
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +43,10 @@ export function EventCacheProvider({ children }) {
   const filtersRef = useRef(DEFAULT_FILTERS);
 
   const getLocation = useCallback(async (filterLocation) => {
+    perfMark('location:start');
+
     if (filterLocation?.coords) {
+      perfMark('location:acquired', { source: 'filter-override' });
       return {
         latitude: filterLocation.coords.latitude,
         longitude: filterLocation.coords.longitude,
@@ -47,11 +55,16 @@ export function EventCacheProvider({ children }) {
 
     const cached = locationCacheRef.current;
     if (cached && Date.now() - cached.fetchedAt < LOCATION_CACHE_TTL_MS) {
+      perfMark('location:acquired', { source: 'memory-cache' });
       return cached.coords;
     }
 
     try {
+      // On a true first launch this blocks on the OS permission dialog —
+      // i.e. on user reaction time, with the network request queued behind it.
       const { status } = await Location.requestForegroundPermissionsAsync();
+      perfMark('location:permission-resolved', { status });
+
       if (status === 'granted') {
         const position = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
@@ -61,9 +74,12 @@ export function EventCacheProvider({ children }) {
           longitude: position.coords.longitude,
         };
         locationCacheRef.current = { coords, fetchedAt: Date.now() };
+        perfMark('location:acquired', { source: 'gps-fix' });
         return coords;
       }
+      perfMark('location:acquired', { source: 'denied', status });
     } catch (error) {
+      perfMark('location:acquired', { source: 'error' });
       console.log('Could not get location:', error);
     }
     return null;
@@ -94,12 +110,20 @@ export function EventCacheProvider({ children }) {
     }
 
     try {
+      perfMark('fetch:start', { background });
       const location = await getLocation(currentFilters.location);
+
+      perfMark('net:request-sent', { hasLocation: !!location });
       const result = await getEvents(user?.uid, location, currentFilters);
+      perfMark('net:response-received', {
+        ok: result.success,
+        events: result.events?.length ?? 0,
+      });
 
       if (result.success) {
         setEvents(result.events);
         setFetchId(prev => prev + 1);
+        perfMark('state:events-committed', { count: result.events.length, background });
         prefetchImages(result.events, 0, 5);
         if (user?.uid) persistCache(user.uid, result.events, currentFilters);
       }
@@ -121,7 +145,10 @@ export function EventCacheProvider({ children }) {
 
     (async () => {
       try {
+        perfMark('cache:disk-read-start');
         const raw = await AsyncStorage.getItem(cacheKey(user.uid));
+        perfMark('cache:disk-read-done', { hit: !!raw, bytes: raw?.length ?? 0 });
+
         if (raw) {
           const { events: cachedEvents, filters: cachedFilters } = JSON.parse(raw);
           const activeFilters = cachedFilters ?? DEFAULT_FILTERS;
@@ -129,6 +156,7 @@ export function EventCacheProvider({ children }) {
           setFilters(activeFilters);
           setEvents(cachedEvents);
           setFetchId(prev => prev + 1);
+          perfMark('cache:hydrated-from-disk', { count: cachedEvents?.length ?? 0 });
           prefetchImages(cachedEvents, 0, 5);
           // Silently refresh in background — user already sees content
           fetchEvents(activeFilters, { background: true });

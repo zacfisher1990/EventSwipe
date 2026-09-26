@@ -32,7 +32,28 @@ exports.onReportCreated = functions.firestore
     
     const reportCount = reportsSnapshot.size;
     console.log(`Event ${eventId} now has ${reportCount} reports`);
-    
+
+    // Update the event itself (only exists for user-posted/scraped events, not
+    // live API events). Done here because clients can't read other users'
+    // reports or update events they don't own. The feed filters on `active`,
+    // so hiding must flip that — `status` alone isn't read anywhere.
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+    if (eventDoc.exists) {
+      const update = { reportCount };
+      if (reportCount >= 5) {
+        update.status = 'removed';
+        update.active = false;
+        update.removedReason = 'auto_reported';
+        update.removedAt = FieldValue.serverTimestamp();
+      } else if (reportCount >= 3) {
+        update.status = 'hidden_review';
+        update.active = false;
+        update.flaggedAt = FieldValue.serverTimestamp();
+      }
+      await eventRef.update(update);
+    }
+
     if (reportCount === 3) {
       await sendThresholdNotification(report, reportCount);
     } else if (reportCount === 5) {
@@ -689,12 +710,19 @@ async function storeEvents(events) {
   
   for (let i = 0; i < events.length; i += 500) {
     const batch = db.batch();
-    const chunk = events.slice(i, i + 500);
-    
+    const chunk = events.slice(i, i + 500).filter((e) => e.externalId);
+    if (chunk.length === 0) continue;
+
+    // Don't let a re-scrape resurrect events hidden/removed by user reports
+    const refs = chunk.map((e) => db.collection('events').doc(`eb_${e.externalId}`));
+    const existing = await db.getAll(...refs);
+    const flagged = new Set(
+      existing.filter((d) => d.exists && d.get('status')).map((d) => d.id)
+    );
+
     for (const event of chunk) {
-      if (!event.externalId) continue;
-      
       const eventId = `eb_${event.externalId}`;
+      if (flagged.has(eventId)) continue;
       const ref = db.collection('events').doc(eventId);
 
       // Smart categorization based on title, description, and venue

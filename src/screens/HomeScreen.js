@@ -8,8 +8,11 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import { submitReport } from '../services/reportService';
 import i18n from '../i18n';
+import { perfMark, perfMarkAfterPaint, perfSummary } from '../utils/perf';
 
 export default function HomeScreen() {
+  perfMark('screen:home-mounted');
+
   const { events, loading, backgroundRefreshing, fetchId, filters, applyFilters, refresh, prefetchAhead } = useEventCache();
   const [allSwiped, setAllSwiped] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -18,12 +21,22 @@ export default function HomeScreen() {
   const [lastSwipe, setLastSwipe] = useState(null); // { direction, event }
   const { user } = useAuth();
   const swiperRef = useRef(null);
+  const summaryPrinted = useRef(false);
 
   // Reset the swiper deck whenever a new batch of events arrives
   useEffect(() => {
     setAllSwiped(events.length === 0);
     setSwiperKey(prev => prev + 1);
   }, [fetchId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dump the full cold-start timeline once the deck is actually on screen.
+  useEffect(() => {
+    if (summaryPrinted.current || loading || events.length === 0) return;
+    summaryPrinted.current = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => perfSummary('cold start → first card'));
+    });
+  }, [loading, events]);
 
   const onSwipedLeft = async (index, event) => {
     console.log('Passed on:', event?.title);
@@ -107,7 +120,14 @@ export default function HomeScreen() {
 
   const renderCard = (event, index) => {
     if (!event) return null;
-    
+
+    if (index === 0) {
+      // React has produced the card's element tree...
+      perfMark('render:first-card-jsx');
+      // ...and this lands after the frame containing it has been drawn.
+      perfMarkAfterPaint('paint:first-card');
+    }
+
     const handleTicketPress = () => {
       if (event.ticketUrl) {
         Linking.openURL(event.ticketUrl);
@@ -135,7 +155,11 @@ export default function HomeScreen() {
     
     return (
       <View style={styles.card}>
-        <Image source={{ uri: event.image }} style={styles.cardImage} />
+        <Image
+          source={{ uri: event.image }}
+          style={styles.cardImage}
+          onLoad={index === 0 ? () => perfMark('paint:first-card-image') : undefined}
+        />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={styles.category}>{(event.categoryDisplay || event.category)?.toUpperCase()}</Text>

@@ -12,7 +12,8 @@ import {
   orderBy,
   Timestamp,
   deleteDoc,
-  deleteField
+  deleteField,
+  increment
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../config/firebase';
@@ -20,6 +21,7 @@ import { uploadEventImage } from './storageService';
 import { trackView, trackSave } from './analyticsService';
 // API events are fetched via Cloud Function (getEventsForLocation)
 import i18n from '../i18n';
+import { perfMark } from '../utils/perf';
 
 // Initialize Cloud Functions
 const functions = getFunctions();
@@ -302,7 +304,10 @@ export const saveEvent = async (userId, event) => {
     const idsToMark = event.groupedIds || [event.id];
     await updateDoc(userRef, {
       savedEvents: arrayUnion(event),
-      swipedEvents: arrayUnion(...idsToMark)
+      swipedEvents: arrayUnion(...idsToMark),
+      swipeCount: increment(1),
+      rightSwipes: increment(1),
+      lastSwipeAt: Timestamp.now(),
     });
     // Track view + save (fire and forget — don't block the UI)
     trackView(event.id);
@@ -320,7 +325,10 @@ export const passEvent = async (userId, eventId, groupedIds = null) => {
     const userRef = doc(db, 'users', userId);
     const idsToMark = groupedIds || [eventId];
     await updateDoc(userRef, {
-      swipedEvents: arrayUnion(...idsToMark)
+      swipedEvents: arrayUnion(...idsToMark),
+      swipeCount: increment(1),
+      leftSwipes: increment(1),
+      lastSwipeAt: Timestamp.now(),
     });
     // Track view even on pass (fire and forget)
     trackView(eventId);
@@ -338,6 +346,8 @@ export const undoPassEvent = async (userId, eventId, groupedIds = null) => {
     const idsToRemove = groupedIds || [eventId];
     await updateDoc(userRef, {
       swipedEvents: arrayRemove(...idsToRemove),
+      swipeCount: increment(-1),
+      leftSwipes: increment(-1),
     });
     return { success: true };
   } catch (error) {
@@ -357,6 +367,8 @@ export const undoSaveEvent = async (userId, event) => {
     await updateDoc(userRef, {
       savedEvents: updatedSaved,
       swipedEvents: arrayRemove(...idsToRemove),
+      swipeCount: increment(-1),
+      rightSwipes: increment(-1),
     });
     return { success: true };
   } catch (error) {
@@ -459,7 +471,10 @@ export const getEvents = async (userId, location, filters = {}) => {
       orderBy('createdAt', 'desc')
     );
     
+    perfMark('net:firestore-events-sent');
     const snapshot = await getDocs(q);
+    perfMark('net:firestore-events-received', { docs: snapshot.size });
+
     let firebaseEvents = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -477,12 +492,17 @@ export const getEvents = async (userId, location, filters = {}) => {
       
       try {
         console.log('Calling Cloud Function for cached events...');
+        perfMark('net:cloudfn-sent');
         const result = await getEventsForLocation({
           latitude: location.latitude,
           longitude: location.longitude,
           radius: radius,
         });
-        
+        perfMark('net:cloudfn-received', {
+          events: result.data?.events?.length ?? 0,
+          fromCache: result.data?.fromCache,
+        });
+
         if (result.data.success) {
           apiEvents = result.data.events || [];
           console.log(`Got ${apiEvents.length} events from Cloud Function (fromCache: ${result.data.fromCache})`);
@@ -494,6 +514,7 @@ export const getEvents = async (userId, location, filters = {}) => {
           }));
         }
       } catch (functionError) {
+        perfMark('net:cloudfn-received', { error: true });
         console.error('Cloud Function error:', functionError);
         // Could fall back to direct API calls here if needed
       }
@@ -548,7 +569,10 @@ export const getEvents = async (userId, location, filters = {}) => {
     // ========================================
     if (userId) {
       const beforeCount = events.length;
+      // Note: this re-reads the same users/{uid} doc AuthContext already fetched.
+      perfMark('net:swiped-ids-sent');
       const swipedIds = await getSwipedEventIds(userId);
+      perfMark('net:swiped-ids-received', { count: swipedIds.length });
       events = events.filter(event => !swipedIds.includes(event.id));
       console.log(`After swiped filter: ${events.length} (removed ${beforeCount - events.length})`);
     }
@@ -634,7 +658,10 @@ export const getEvents = async (userId, location, filters = {}) => {
     });
     
     console.log(`=== Final event count: ${events.length} ===`);
-    
+    // Everything since net:swiped-ids-received is synchronous CPU work on the
+    // JS thread: dedupe, distance/category/time filters, grouping, sort.
+    perfMark('compute:pipeline-done', { events: events.length });
+
     return { success: true, events };
   } catch (error) {
     console.error('Error getting events:', error);

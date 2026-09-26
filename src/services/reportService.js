@@ -7,8 +7,6 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
-  increment,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import i18n from '../i18n';
@@ -53,32 +51,8 @@ export const submitReport = async (eventId, reporterId, reason, details = null, 
 
     const reportRef = await addDoc(collection(db, 'reports'), reportData);
 
-    // Check total reports for this event and handle thresholds
-    const totalReports = await getReportCountForEvent(eventId);
-    
-    // Try to update event document if it exists in Firestore (user-created events)
-    try {
-      const eventRef = doc(db, 'events', eventId);
-      const eventDoc = await getDoc(eventRef);
-      
-      if (eventDoc.exists()) {
-        await updateDoc(eventRef, {
-          reportCount: increment(1),
-        });
-        
-        // Check if event has reached threshold for auto-hide
-        await checkReportThreshold(eventId, totalReports);
-      }
-    } catch (updateError) {
-      // Event doesn't exist in Firestore (external API event) - that's OK
-      console.log('Event not in Firestore, skipping reportCount update');
-    }
-
-    // Log for your reference - you could add email notification here later
-    if (totalReports >= 3) {
-      console.warn(`⚠️ EVENT HAS ${totalReports} REPORTS: ${eventInfo.title || eventId}`);
-    }
-
+    // Report counting, auto-hide and admin emails happen server-side in the
+    // onReportCreated Cloud Function (clients can't read others' reports)
     return reportRef.id;
   } catch (error) {
     console.error('Error submitting report:', error);
@@ -98,43 +72,6 @@ export const checkExistingReport = async (eventId, reporterId) => {
   
   const snapshot = await getDocs(q);
   return !snapshot.empty;
-};
-
-/**
- * Get total report count for an event
- */
-export const getReportCountForEvent = async (eventId) => {
-  const q = query(
-    collection(db, 'reports'),
-    where('eventId', '==', eventId)
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.size;
-};
-
-/**
- * Check if an event has reached the report threshold and should be hidden
- * Threshold: 3 reports = hidden pending review, 5 reports = auto-removed
- */
-const checkReportThreshold = async (eventId, reportCount) => {
-  const eventRef = doc(db, 'events', eventId);
-
-  if (reportCount >= 5) {
-    // Auto-remove the event
-    await updateDoc(eventRef, {
-      status: 'removed',
-      removedReason: 'auto_reported',
-      removedAt: serverTimestamp(),
-    });
-    // TODO: Notify organizer via email/notification
-  } else if (reportCount >= 3) {
-    // Hide pending review
-    await updateDoc(eventRef, {
-      status: 'hidden_review',
-      flaggedAt: serverTimestamp(),
-    });
-  }
 };
 
 /**

@@ -8,6 +8,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import i18n from '../i18n';
+import { perfMark } from '../utils/perf';
 
 // Map Firebase error codes to translated messages
 const getAuthErrorMessage = (error) => {
@@ -32,10 +33,17 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    perfMark('auth:listener-attached');
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Fires once firebase has read persisted credentials out of AsyncStorage.
+      perfMark('auth:state-restored', { hasUser: !!firebaseUser });
+
       if (firebaseUser) {
         // Get additional user data from Firestore
+        perfMark('auth:userdoc-request-sent');
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        perfMark('auth:userdoc-response-received', { exists: userDoc.exists() });
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,

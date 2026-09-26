@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow authenticated users to read all events, write their own
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.posterId == request.auth.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.posterId;
+    }
+
+    // Reports - anyone authenticated can create, only read their own.
+    // Counting/auto-hide is done by the onReportCreated Cloud Function.
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.reporterId == request.auth.uid;
+      allow read: if request.auth != null && request.auth.uid == resource.data.reporterId;
+    }
+
+    // Analytics - any authenticated user can write, read
+    match /eventAnalytics/{eventId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

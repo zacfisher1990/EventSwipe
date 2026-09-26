@@ -8,10 +8,17 @@ import { EventCacheProvider } from './src/context/EventCacheContext';
 import AuthModal from './src/components/AuthModal';
 import TabNavigator from './src/navigation/TabNavigator';
 import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
+import { perfMark } from './src/utils/perf';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
-  
+
+  if (!isLoading) {
+    // Auth has settled: firebase restored (or failed to restore) the session AND
+    // the Firestore user doc read finished. Nothing below this mounts before it.
+    perfMark('auth:resolved', { signedIn: !!user });
+  }
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4ECDC4' }}>
@@ -32,9 +39,17 @@ function AppContent() {
 }
 
 export default function App() {
+  perfMark('app:mount');
+
   const [fontsLoaded] = useFonts({
     Shrikhand_400Regular,
   });
+
+  if (fontsLoaded) {
+    // Gate: AuthProvider is not mounted until this flips, so the auth listener
+    // does not even subscribe before fonts finish loading.
+    perfMark('fonts:loaded');
+  }
 
   if (!fontsLoaded) {
     return (
