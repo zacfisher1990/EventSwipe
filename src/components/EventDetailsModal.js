@@ -33,6 +33,10 @@ const getReportReasons = () => [
 ];
 
 // Report Modal Component
+// Included in shared events so recipients can get the app
+const APP_STORE_URL = 'https://apps.apple.com/app/id6757116958';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.eventswipeapp.eventswipe';
+
 function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
   const [selectedReason, setSelectedReason] = useState(null);
   const [otherText, setOtherText] = useState('');
@@ -383,6 +387,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
       if (event.location) message += `\n📍 ${event.location}`;
       if (event.ticketUrl) message += `\n\n🎟️ ${i18n.t('eventDetails.shareGetTickets')}: ${event.ticketUrl}`;
       message += `\n\n${i18n.t('eventDetails.shareFoundOn')}`;
+      message += `\n📲 iPhone: ${APP_STORE_URL}\n📲 Android: ${PLAY_STORE_URL}`;
 
       await Share.share({
         message,

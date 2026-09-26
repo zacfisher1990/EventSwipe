@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Reconnexion requise',
     signOutConfirm: 'Es-tu sûr de vouloir te déconnecter ?',
     version: 'EventSwipe v1.0.0',
+    guest: "Invité",
+    guestText: "Crée un compte pour garder tes événements enregistrés et publier les tiens.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Conditions d\'utilisation',
     and: 'et',
     privacyPolicy: 'Politique de confidentialité',
+    notNow: "Plus tard",
+    guestPrompt: {
+      save: "Crée un compte gratuit pour ne pas perdre tes événements enregistrés.",
+      post: "Crée un compte gratuit pour publier tes propres événements.",
+    },
   },
 
   // Swipe labels

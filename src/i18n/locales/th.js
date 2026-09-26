@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'ต้องยืนยันตัวตนใหม่',
     signOutConfirm: 'คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?',
     version: 'EventSwipe v1.0.0',
+    guest: "ผู้เยี่ยมชม",
+    guestText: "สร้างบัญชีเพื่อเก็บอีเวนต์ที่บันทึกไว้และโพสต์อีเวนต์ของคุณเอง",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'ข้อกำหนดการใช้งาน',
     and: 'และ',
     privacyPolicy: 'นโยบายความเป็นส่วนตัว',
+    notNow: "ไว้ทีหลัง",
+    guestPrompt: {
+      save: "สร้างบัญชีฟรีเพื่อไม่ให้อีเวนต์ที่บันทึกไว้หายไป",
+      post: "สร้างบัญชีฟรีเพื่อโพสต์อีเวนต์ของคุณเอง",
+    },
   },
 
   // Swipe labels

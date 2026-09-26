@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
 import { perfMark } from './src/utils/perf';
 
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, guestUnavailable, authPrompt, closeAuthPrompt } = useAuth();
 
   if (!isLoading) {
     // Auth has settled: firebase restored (or failed to restore) the session AND
@@ -19,7 +19,8 @@ function AppContent() {
     perfMark('auth:resolved', { signedIn: !!user });
   }
 
-  if (isLoading) {
+  // Covers the brief gap while a guest session starts (first launch, sign-out)
+  if (isLoading || (!user && !guestUnavailable)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4ECDC4' }}>
         <ActivityIndicator size="large" color="#fff" />
@@ -32,6 +33,17 @@ function AppContent() {
       <NavigationContainer>
         <TabNavigator />
       </NavigationContainer>
+      <Modal
+        visible={!!authPrompt}
+        animationType="slide"
+        onRequestClose={closeAuthPrompt}
+      >
+        <AuthModal
+          reason={authPrompt?.reason}
+          initialMode={authPrompt?.mode}
+          onClose={closeAuthPrompt}
+        />
+      </Modal>
     </EventCacheProvider>
   ) : (
     <AuthModal />

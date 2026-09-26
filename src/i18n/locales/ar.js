@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'مطلوب إعادة المصادقة',
     signOutConfirm: 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
     version: 'EventSwipe v1.0.0',
+    guest: "زائر",
+    guestText: "أنشئ حسابًا للاحتفاظ بفعالياتك المحفوظة ونشر فعالياتك الخاصة.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'شروط الخدمة',
     and: 'و',
     privacyPolicy: 'سياسة الخصوصية',
+    notNow: "ليس الآن",
+    guestPrompt: {
+      save: "أنشئ حسابًا مجانيًا حتى لا تفقد فعالياتك المحفوظة.",
+      post: "أنشئ حسابًا مجانيًا لنشر فعالياتك الخاصة.",
+    },
   },
 
   // Swipe labels

@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Wymagane ponowne logowanie',
     signOutConfirm: 'Czy na pewno chcesz się wylogować?',
     version: 'EventSwipe v1.0.0',
+    guest: "Gość",
+    guestText: "Załóż konto, aby zachować zapisane wydarzenia i publikować własne.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Warunki korzystania z usługi',
     and: 'i',
     privacyPolicy: 'Politykę prywatności',
+    notNow: "Nie teraz",
+    guestPrompt: {
+      save: "Załóż darmowe konto, aby nie stracić zapisanych wydarzeń.",
+      post: "Załóż darmowe konto, aby publikować własne wydarzenia.",
+    },
   },
 
   // Swipe labels

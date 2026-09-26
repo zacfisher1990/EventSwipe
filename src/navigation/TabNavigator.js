@@ -9,6 +9,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import PostEventScreen from '../screens/PostEventScreen';
 import ActivityScreen from '../screens/ActivityScreen';
 import i18n from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -22,6 +23,7 @@ const CustomPlusButton = ({ onPress }) => (
 
 export default function TabNavigator() {
   const insets = useSafeAreaInsets();
+  const { user, requireAccount } = useAuth();
 
   return (
     <Tab.Navigator
@@ -75,6 +77,15 @@ export default function TabNavigator() {
       <Tab.Screen
         name="Post"
         component={PostEventScreen}
+        listeners={{
+          // Posting needs a real account (also enforced in Firestore rules)
+          tabPress: (e) => {
+            if (user?.isAnonymous) {
+              e.preventDefault();
+              requireAccount('post');
+            }
+          },
+        }}
         options={{
           tabBarLabel: () => null,
           tabBarIcon: () => null,

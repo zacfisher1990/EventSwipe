@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: '需要重新驗證',
     signOutConfirm: '你確定要登出嗎？',
     version: 'EventSwipe v1.0.0',
+    guest: "訪客",
+    guestText: "建立帳戶即可保留已儲存的活動並發佈你自己的活動。",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: '服務條款',
     and: '和',
     privacyPolicy: '隱私權政策',
+    notNow: "暫不",
+    guestPrompt: {
+      save: "建立免費帳戶，以免遺失已儲存的活動。",
+      post: "建立免費帳戶即可發佈你自己的活動。",
+    },
   },
 
   // Swipe labels

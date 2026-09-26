@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: '再認証が必要です',
     signOutConfirm: 'ログアウトしてもよろしいですか？',
     version: 'EventSwipe v1.0.0',
+    guest: "ゲスト",
+    guestText: "アカウントを作成すると、保存したイベントを残したり、自分のイベントを投稿したりできます。",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: '利用規約',
     and: 'および',
     privacyPolicy: 'プライバシーポリシー',
+    notNow: "今はしない",
+    guestPrompt: {
+      save: "無料アカウントを作成して、保存したイベントを失わないようにしましょう。",
+      post: "無料アカウントを作成して、自分のイベントを投稿しましょう。",
+    },
   },
 
   // Swipe labels

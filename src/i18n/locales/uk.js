@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Потрібен повторний вхід',
     signOutConfirm: 'Ти впевнений, що хочеш вийти?',
     version: 'EventSwipe v1.0.0',
+    guest: "Гість",
+    guestText: "Створи акаунт, щоб зберегти вибрані події та публікувати власні.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Умовами використання',
     and: 'та',
     privacyPolicy: 'Політикою конфіденційності',
+    notNow: "Не зараз",
+    guestPrompt: {
+      save: "Створи безкоштовний акаунт, щоб не втратити збережені події.",
+      post: "Створи безкоштовний акаунт, щоб публікувати власні події.",
+    },
   },
 
   // Swipe labels

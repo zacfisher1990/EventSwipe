@@ -18,10 +18,21 @@ const fmtAgo = (iso) => {
 
 const DAY = 86400000;
 
+// lastActiveAt is written on each app open (newer builds); fall back to the
+// Firebase Auth sign-in time for users who haven't updated yet.
+const lastActive = (u) => u.lastActiveAt || u.lastSignIn;
+
+const platformLabel = (u) => {
+  if (u.platform === 'ios') return `iOS ${u.osVersion || ''}`.trim();
+  if (u.platform === 'android') return u.osVersion ? `Android (API ${u.osVersion})` : 'Android';
+  return u.platform;
+};
+
 const COLUMNS = [
   { key: 'email', label: 'User', sort: (u) => (u.email || '').toLowerCase() },
+  { key: 'platform', label: 'Platform', sort: (u) => u.platform || '' },
   { key: 'createdAt', label: 'Joined', sort: (u) => u.createdAt || '' },
-  { key: 'lastSignIn', label: 'Last sign-in', sort: (u) => u.lastSignIn || '' },
+  { key: 'lastActive', label: 'Last active', sort: (u) => lastActive(u) || '' },
   { key: 'swipes', label: 'Swipes', num: true, sort: (u) => u.swipeCount ?? -1 },
   { key: 'split', label: 'Right / Left', num: true, sort: (u) => u.rightSwipes ?? -1 },
   { key: 'saved', label: 'Saved now', num: true, sort: (u) => u.savedEvents },
@@ -80,7 +91,7 @@ function Overview({ user }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState({ key: 'lastSignIn', dir: -1 });
+  const [sort, setSort] = useState({ key: 'lastActive', dir: -1 });
   const [expanded, setExpanded] = useState(null);
 
   const load = useCallback(async () => {
@@ -122,14 +133,17 @@ function Overview({ user }) {
     const u = data.users;
     const now = Date.now();
     const activeWithin = (days) =>
-      u.filter((x) => x.lastSignIn && now - new Date(x.lastSignIn).getTime() < days * DAY).length;
+      u.filter((x) => lastActive(x) && now - new Date(lastActive(x)).getTime() < days * DAY).length;
     return {
       users: u.length,
+      guests: u.filter((x) => x.isGuest).length,
       active7: activeWithin(7),
       active30: activeWithin(30),
       newThisWeek: u.filter((x) => x.createdAt && now - new Date(x.createdAt).getTime() < 7 * DAY).length,
       swipes: u.reduce((s, x) => s + (x.swipeCount || 0), 0),
       events: u.reduce((s, x) => s + x.events.length, 0),
+      ios: u.filter((x) => x.platform === 'ios').length,
+      android: u.filter((x) => x.platform === 'android').length,
     };
   }, [data]);
 
@@ -164,10 +178,19 @@ function Overview({ user }) {
 
       {totals && (
         <section className="tiles">
-          <Tile label="Users" value={totals.users} sub={`+${totals.newThisWeek} this week`} />
+          <Tile
+            label="Users"
+            value={totals.users}
+            sub={`+${totals.newThisWeek} this week · ${totals.guests} guests`}
+          />
           <Tile label="Active (7d)" value={totals.active7} sub={`${totals.active30} in 30d`} />
           <Tile label="Swipes tracked" value={totals.swipes} sub="since counter launch" />
           <Tile label="Events posted" value={totals.events} />
+          <Tile
+            label="iOS / Android"
+            value={`${totals.ios} / ${totals.android}`}
+            sub={`${totals.users - totals.ios - totals.android} not yet reported`}
+          />
         </section>
       )}
 
@@ -199,13 +222,17 @@ function Overview({ user }) {
                   <Fragment key={u.uid}>
                     <tr className="row" onClick={() => setExpanded(expanded === u.uid ? null : u.uid)}>
                       <td>
-                        <div className="email">{u.email || <span className="muted">no email</span>}</div>
+                        <div className="email">
+                          {u.email || <span className="muted">{u.isGuest ? 'Guest' : 'no email'}</span>}
+                        </div>
                         <div className="muted small mono">{u.uid}</div>
+                        {u.isGuest && <span className="badge">guest</span>}
                         {u.disabled && <span className="badge warn">disabled</span>}
                         {u.deletedFromAuth && <span className="badge warn">no auth account</span>}
                       </td>
+                      <td>{u.platform ? platformLabel(u) : <span className="muted">—</span>}</td>
                       <td>{fmtDate(u.createdAt)}</td>
-                      <td>{fmtAgo(u.lastSignIn)}</td>
+                      <td>{fmtAgo(lastActive(u))}</td>
                       <td className="num">
                         {u.swipeCount != null ? (
                           u.swipeCount
@@ -261,6 +288,7 @@ function UserDetail({ u }) {
     <div className="detailbox">
       <div className="facts">
         <span>Last swipe: <b>{fmtAgo(u.lastSwipeAt)}</b></span>
+        <span>Last sign-in: <b>{fmtAgo(u.lastSignIn)}</b></span>
         <span>Distinct events swiped: <b>{u.swipedEventIds}</b></span>
         <span>Currently saved: <b>{u.savedEvents}</b></span>
       </div>

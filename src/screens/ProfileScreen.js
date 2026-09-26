@@ -20,7 +20,8 @@ import { auth } from '../config/firebase';
 import i18n from '../i18n';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, requireAccount } = useAuth();
+  const isGuest = !!user?.isAnonymous;
   const [stats, setStats] = useState({ saved: 0, swiped: 0 });
   const [loading, setLoading] = useState(false);
 
@@ -167,11 +168,30 @@ export default function ProfileScreen() {
         {/* User Info */}
         <View style={styles.userCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
-            </Text>
+            {isGuest ? (
+              <Ionicons name="person" size={36} color="#fff" />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            )}
           </View>
-          <Text style={styles.email}>{user?.email}</Text>
+          {isGuest ? (
+            <>
+              <Text style={styles.guestTitle}>{i18n.t('profile.guest')}</Text>
+              <Text style={styles.guestText}>{i18n.t('profile.guestText')}</Text>
+              <TouchableOpacity style={styles.createAccountButton} onPress={() => requireAccount(null, 'signup')}>
+                <Text style={styles.createAccountText}>{i18n.t('auth.createAccount')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => requireAccount(null, 'login')} style={styles.guestSignIn}>
+                <Text style={styles.guestSignInText}>
+                  {i18n.t('auth.haveAccount')} <Text style={styles.guestSignInBold}>{i18n.t('auth.signIn')}</Text>
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.email}>{user?.email}</Text>
+          )}
           
           {/* Stats */}
           <View style={styles.statsRow}>
@@ -218,6 +238,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
+          {!isGuest && (
           <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount} disabled={loading}>
             <View style={[styles.menuIcon, { backgroundColor: '#FFE8E8' }]}>
               <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
@@ -228,13 +249,16 @@ export default function ProfileScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
+          )}
         </View>
 
-        {/* Sign Out Button */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} disabled={loading}>
-          <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={styles.signOutText}>{i18n.t('common.signOut')}</Text>
-        </TouchableOpacity>
+        {/* Sign Out Button (guests have nothing to sign out of) */}
+        {!isGuest && (
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} disabled={loading}>
+            <Ionicons name="log-out-outline" size={20} color="#fff" />
+            <Text style={styles.signOutText}>{i18n.t('common.signOut')}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* App Version */}
         <Text style={styles.version}>{i18n.t('profile.version')}</Text>
@@ -299,6 +323,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 20,
+  },
+  guestTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  guestText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  createAccountButton: {
+    backgroundColor: '#4ECDC4',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+  },
+  createAccountText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  guestSignIn: {
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  guestSignInText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  guestSignInBold: {
+    color: '#4ECDC4',
+    fontWeight: '700',
   },
   statsRow: {
     flexDirection: 'row',

@@ -30,8 +30,17 @@ exports.onReportCreated = functions.firestore
       .where('eventId', '==', eventId)
       .get();
     
-    const reportCount = reportsSnapshot.size;
-    console.log(`Event ${eventId} now has ${reportCount} reports`);
+    // Guest (anonymous) accounts are free to create, so only reports from
+    // real accounts count toward hiding/removing an event.
+    const reporterIds = [...new Set(reportsSnapshot.docs.map((d) => d.get('reporterId')).filter(Boolean))];
+    let reportCount = 0;
+    for (let i = 0; i < reporterIds.length; i += 100) {
+      const { users } = await admin.auth().getUsers(
+        reporterIds.slice(i, i + 100).map((uid) => ({ uid }))
+      );
+      reportCount += users.filter((u) => u.providerData.length > 0).length;
+    }
+    console.log(`Event ${eventId} now has ${reportCount} reports from accounts (${reportsSnapshot.size} total)`);
 
     // Update the event itself (only exists for user-posted/scraped events, not
     // live API events). Done here because clients can't read other users'
@@ -62,6 +71,15 @@ exports.onReportCreated = functions.firestore
     
     return null;
   });
+
+/**
+ * Remove a user's Firestore doc when their auth account is deleted — including
+ * guest accounts cleaned up after the guest signs in to an existing account.
+ */
+exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
+  await db.collection('users').doc(user.uid).delete();
+  return null;
+});
 
 async function sendThresholdNotification(report, count) {
   const notification = {

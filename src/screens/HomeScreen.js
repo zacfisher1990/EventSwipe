@@ -19,8 +19,9 @@ export default function HomeScreen() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [swiperKey, setSwiperKey] = useState(0);
   const [lastSwipe, setLastSwipe] = useState(null); // { direction, event }
-  const { user } = useAuth();
+  const { user, requireAccount } = useAuth();
   const swiperRef = useRef(null);
+  const guestPromptShown = useRef(false);
   const summaryPrinted = useRef(false);
 
   // Reset the swiper deck whenever a new batch of events arrives
@@ -66,6 +67,11 @@ export default function HomeScreen() {
       const result = await saveEvent(user.uid, eventToSave);
       if (result.success) {
         console.log('Event saved successfully!');
+        // Guests: after their first save, offer an account so saves aren't lost
+        if (user.isAnonymous && !guestPromptShown.current) {
+          guestPromptShown.current = true;
+          setTimeout(() => requireAccount('save'), 400);
+        }
       } else {
         console.error('Failed to save event:', result.error);
       }

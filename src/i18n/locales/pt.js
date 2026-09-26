@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Reautenticação Necessária',
     signOutConfirm: 'Tem certeza de que deseja sair?',
     version: 'EventSwipe v1.0.0',
+    guest: "Convidado",
+    guestText: "Crie uma conta para manter seus eventos salvos e publicar os seus.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Termos de Serviço',
     and: 'e',
     privacyPolicy: 'Política de Privacidade',
+    notNow: "Agora não",
+    guestPrompt: {
+      save: "Crie uma conta grátis para não perder seus eventos salvos.",
+      post: "Crie uma conta grátis para publicar seus próprios eventos.",
+    },
   },
 
   // Swipe labels

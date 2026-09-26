@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Cần xác thực lại',
     signOutConfirm: 'Bạn có chắc chắn muốn đăng xuất?',
     version: 'EventSwipe v1.0.0',
+    guest: "Khách",
+    guestText: "Tạo tài khoản để giữ các sự kiện đã lưu và đăng sự kiện của riêng bạn.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Điều khoản dịch vụ',
     and: 'và',
     privacyPolicy: 'Chính sách bảo mật',
+    notNow: "Để sau",
+    guestPrompt: {
+      save: "Tạo tài khoản miễn phí để không mất các sự kiện đã lưu.",
+      post: "Tạo tài khoản miễn phí để đăng sự kiện của riêng bạn.",
+    },
   },
 
   // Swipe labels

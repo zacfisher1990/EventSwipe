@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Perlu Login Ulang',
     signOutConfirm: 'Yakin ingin keluar?',
     version: 'EventSwipe v1.0.0',
+    guest: "Tamu",
+    guestText: "Buat akun untuk menyimpan acara favoritmu dan memposting acaramu sendiri.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Ketentuan Layanan',
     and: 'dan',
     privacyPolicy: 'Kebijakan Privasi',
+    notNow: "Nanti saja",
+    guestPrompt: {
+      save: "Buat akun gratis agar acara yang kamu simpan tidak hilang.",
+      post: "Buat akun gratis untuk memposting acaramu sendiri.",
+    },
   },
 
   // Swipe labels

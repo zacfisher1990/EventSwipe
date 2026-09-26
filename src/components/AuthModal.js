@@ -162,8 +162,10 @@ const GradientOrb = ({ color, size, x, y, delay }) => {
   );
 };
 
-export default function AuthModal() {
-  const [isLogin, setIsLogin] = useState(true);
+// Shown full-screen when guest browsing is unavailable, or as a sheet
+// (with onClose) when a guest is asked to create an account.
+export default function AuthModal({ reason = null, initialMode = 'login', onClose }) {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -374,7 +376,9 @@ export default function AuthModal() {
           >
             <Text style={styles.title}>{isLogin ? i18n.t('auth.welcomeBack') : i18n.t('auth.createAccount')}</Text>
             <Text style={styles.subtitle}>
-              {isLogin ? i18n.t('auth.readyForAdventure') : i18n.t('auth.joinTheFun')}
+              {reason
+                ? i18n.t(`auth.guestPrompt.${reason}`)
+                : isLogin ? i18n.t('auth.readyForAdventure') : i18n.t('auth.joinTheFun')}
             </Text>
 
             <View
@@ -499,6 +503,17 @@ export default function AuthModal() {
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
+
+      {onClose && (
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={i18n.t('auth.notNow')}
+        >
+          <Text style={styles.closeButtonText}>{i18n.t('auth.notNow')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -508,6 +523,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#4ECDC4',
     overflow: 'hidden',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 54,
+    right: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   gradientOrb: {
     position: 'absolute',

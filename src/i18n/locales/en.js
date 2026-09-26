@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Re-authentication Required',
     signOutConfirm: 'Are you sure you want to sign out?',
     version: 'EventSwipe v1.0.0',
+    guest: "Guest",
+    guestText: "Create an account to keep your saved events and post your own.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Terms of Service',
     and: 'and',
     privacyPolicy: 'Privacy Policy',
+    notNow: "Not now",
+    guestPrompt: {
+      save: "Create a free account so you don't lose your saved events.",
+      post: "Create a free account to post your own events.",
+    },
   },
 
   // Swipe labels

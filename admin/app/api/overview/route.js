@@ -75,6 +75,8 @@ export async function GET(request) {
       uid,
       email: a?.email || d.email || null,
       disabled: a?.disabled || false,
+      // Anonymous auth: browsing as a guest, hasn't created an account yet
+      isGuest: !!a && a.providerData.length === 0,
       deletedFromAuth: !a,
       createdAt: a?.metadata.creationTime
         ? new Date(a.metadata.creationTime).toISOString()
@@ -83,6 +85,9 @@ export async function GET(request) {
         ? new Date(a.metadata.lastSignInTime).toISOString()
         : null,
       lastSwipeAt: toIso(d.lastSwipeAt),
+      lastActiveAt: toIso(d.lastActiveAt),
+      platform: d.platform || null,
+      osVersion: d.osVersion || null,
       // Exact counters, only recorded since the in-app counter shipped
       swipeCount: d.swipeCount ?? null,
       rightSwipes: d.rightSwipes ?? null,

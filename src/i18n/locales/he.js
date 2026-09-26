@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'נדרש אימות מחדש',
     signOutConfirm: 'האם אתה בטוח שברצונך להתנתק?',
     version: 'EventSwipe v1.0.0',
+    guest: "אורח",
+    guestText: "צרו חשבון כדי לשמור את האירועים שלכם ולפרסם אירועים משלכם.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'תנאי השימוש',
     and: 'ו',
     privacyPolicy: 'מדיניות הפרטיות',
+    notNow: "לא עכשיו",
+    guestPrompt: {
+      save: "צרו חשבון חינם כדי לא לאבד את האירועים ששמרתם.",
+      post: "צרו חשבון חינם כדי לפרסם אירועים משלכם.",
+    },
   },
 
   // Swipe labels

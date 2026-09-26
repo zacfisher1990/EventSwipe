@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: '재인증 필요',
     signOutConfirm: '정말로 로그아웃하시겠습니까?',
     version: 'EventSwipe v1.0.0',
+    guest: "게스트",
+    guestText: "계정을 만들면 저장한 이벤트를 보관하고 나만의 이벤트를 올릴 수 있어요.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: '서비스 약관',
     and: '및',
     privacyPolicy: '개인정보 처리방침',
+    notNow: "나중에",
+    guestPrompt: {
+      save: "저장한 이벤트를 잃지 않도록 무료 계정을 만드세요.",
+      post: "나만의 이벤트를 올리려면 무료 계정을 만드세요.",
+    },
   },
 
   // Swipe labels

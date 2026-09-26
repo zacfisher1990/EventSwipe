@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Yeniden Kimlik Doğrulama Gerekli',
     signOutConfirm: 'Çıkış yapmak istediğinden emin misin?',
     version: 'EventSwipe v1.0.0',
+    guest: "Misafir",
+    guestText: "Kaydettiğin etkinlikleri korumak ve kendi etkinliklerini paylaşmak için bir hesap oluştur.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Kullanım Koşulları',
     and: 've',
     privacyPolicy: 'Gizlilik Politikası',
+    notNow: "Şimdi değil",
+    guestPrompt: {
+      save: "Kaydettiğin etkinlikleri kaybetmemek için ücretsiz bir hesap oluştur.",
+      post: "Kendi etkinliklerini paylaşmak için ücretsiz bir hesap oluştur.",
+    },
   },
 
   // Swipe labels

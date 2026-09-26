@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Требуется повторный вход',
     signOutConfirm: 'Ты уверен, что хочешь выйти?',
     version: 'EventSwipe v1.0.0',
+    guest: "Гость",
+    guestText: "Создай аккаунт, чтобы сохранить избранные события и публиковать свои.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Условиями использования',
     and: 'и',
     privacyPolicy: 'Политикой конфиденциальности',
+    notNow: "Не сейчас",
+    guestPrompt: {
+      save: "Создай бесплатный аккаунт, чтобы не потерять сохранённые события.",
+      post: "Создай бесплатный аккаунт, чтобы публиковать свои события.",
+    },
   },
 
   // Swipe labels

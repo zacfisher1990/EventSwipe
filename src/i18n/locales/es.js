@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Re-autenticación Requerida',
     signOutConfirm: '¿Estás seguro de que quieres cerrar sesión?',
     version: 'EventSwipe v1.0.0',
+    guest: "Invitado",
+    guestText: "Crea una cuenta para conservar tus eventos guardados y publicar los tuyos.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Términos de Servicio',
     and: 'y',
     privacyPolicy: 'Política de Privacidad',
+    notNow: "Ahora no",
+    guestPrompt: {
+      save: "Crea una cuenta gratis para no perder tus eventos guardados.",
+      post: "Crea una cuenta gratis para publicar tus propios eventos.",
+    },
   },
 
   // Swipe labels

@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: '需要重新验证',
     signOutConfirm: '你确定要退出登录吗？',
     version: 'EventSwipe v1.0.0',
+    guest: "访客",
+    guestText: "创建账户即可保留已保存的活动并发布你自己的活动。",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: '服务条款',
     and: '和',
     privacyPolicy: '隐私政策',
+    notNow: "暂不",
+    guestPrompt: {
+      save: "创建免费账户，以免丢失已保存的活动。",
+      post: "创建免费账户即可发布你自己的活动。",
+    },
   },
 
   // Swipe labels

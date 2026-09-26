@@ -151,6 +151,8 @@ export default {
     reAuthRequiredTitle: 'Erneute Anmeldung erforderlich',
     signOutConfirm: 'Bist du sicher, dass du dich abmelden möchtest?',
     version: 'EventSwipe v1.0.0',
+    guest: "Gast",
+    guestText: "Erstelle ein Konto, um deine gespeicherten Events zu behalten und eigene zu veröffentlichen.",
   },
 
   // Event Details Modal
@@ -248,6 +250,11 @@ export default {
     termsOfService: 'Nutzungsbedingungen',
     and: 'und',
     privacyPolicy: 'Datenschutzrichtlinien',
+    notNow: "Nicht jetzt",
+    guestPrompt: {
+      save: "Erstelle ein kostenloses Konto, damit deine gespeicherten Events nicht verloren gehen.",
+      post: "Erstelle ein kostenloses Konto, um eigene Events zu veröffentlichen.",
+    },
   },
 
   // Swipe labels
