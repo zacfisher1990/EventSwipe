@@ -6,13 +6,13 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-nat
 // has Reduce Motion turned on.
 
 const COLORS = ['#4ECDC4', '#FF6B6B', '#FFD93D', '#FF9F43', '#A8E6CF', '#ffffff'];
-const PARTICLES_PER_BURST = 14;
+const PARTICLES_PER_BURST = 16;
 const BURST_DURATION = 900;
 // Where each burst goes off, as a fraction of the screen, and when (ms)
 const BURSTS = [
-  { x: 0.72, y: 0.32, delay: 0, radius: 110 },
-  { x: 0.30, y: 0.24, delay: 140, radius: 90 },
-  { x: 0.55, y: 0.50, delay: 280, radius: 100 },
+  { x: 0.72, y: 0.32, delay: 0, radius: 130 },
+  { x: 0.30, y: 0.24, delay: 140, radius: 110 },
+  { x: 0.55, y: 0.50, delay: 280, radius: 120 },
 ];
 
 function Burst({ x, y, radius, delay, onDone }) {
@@ -27,7 +27,7 @@ function Burst({ x, y, radius, delay, onDone }) {
         dx: Math.cos(angle) * distance,
         dy: Math.sin(angle) * distance,
         color: COLORS[i % COLORS.length],
-        size: 6 + Math.round(Math.random() * 4),
+        size: 9 + Math.round(Math.random() * 5),
       };
     })
   ).current;
@@ -106,7 +106,7 @@ const SaveFireworks = forwardRef(function SaveFireworks(_, ref) {
 
   return (
     <View
-      style={StyleSheet.absoluteFill}
+      style={styles.overlay}
       pointerEvents="none"
       onLayout={(e) => { size.current = e.nativeEvent.layout; }}
     >
@@ -130,6 +130,14 @@ const SaveFireworks = forwardRef(function SaveFireworks(_, ref) {
 export default SaveFireworks;
 
 const styles = StyleSheet.create({
+  // Explicit stacking: the swiper's cards have zIndex (and elevation on
+  // Android), and their plain wrapper views get flattened away, so without
+  // this the next card is drawn over the fireworks.
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 100,
+  },
   origin: {
     position: 'absolute',
     width: 0,
@@ -137,11 +145,11 @@ const styles = StyleSheet.create({
   },
   flash: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginLeft: -20,
-    marginTop: -20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginLeft: -28,
+    marginTop: -28,
     backgroundColor: '#fff',
   },
 });
