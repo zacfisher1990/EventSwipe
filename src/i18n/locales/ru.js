@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Нажми для подробностей',
     seeTickets: 'Смотреть билеты',
     findTickets: 'Найти билеты',
+    availableDaily: "Доступно ежедневно",
     allCaughtUp: 'Ты всё посмотрел!',
     noMoreEvents: 'Больше нет событий',
     checkBackLater: 'Загляни позже или измени фильтры.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'О событии',
     getTickets: 'Купить билеты',
+    bookNow: "Забронировать",
     getDirections: 'Как добраться',
     reportEvent: 'Пожаловаться',
     deleteEvent: 'Удалить событие',

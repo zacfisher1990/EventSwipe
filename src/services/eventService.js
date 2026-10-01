@@ -113,6 +113,12 @@ const groupMultiDateEvents = (events) => {
   const groups = new Map();
   
   for (const event of events) {
+    // Ongoing events (no fixed date) have nothing to merge
+    if (event.ongoing) {
+      groups.set(`__ongoing_${event.id}`, [event]);
+      continue;
+    }
+
     // Events already flagged as multi-date (e.g. user-posted) skip grouping
     if (event.hasMultipleDates) {
       groups.set(`__multidate_${event.id}`, [event]);
@@ -517,6 +523,9 @@ const fetchApiEvents = async (location, radius) => {
   }
 };
 
+// One ongoing event after every this-many dated ones
+const ONGOING_EVERY = 4;
+
 const sortByDate = (events) => {
   const withTime = (event) => {
     const date = parseEventDate(event.date);
@@ -562,6 +571,7 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
   if (filters?.timeRange) {
     const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
     events = events.filter(event => {
+      if (event.ongoing) return true; // available any day
       if (!event.date) return false;
       const eventDate = parseEventDate(event.date);
       return !!eventDate && eventDate >= startDate && eventDate <= endDate;
@@ -589,7 +599,20 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
   }
 
   events = groupMultiDateEvents(events);
-  return sortByDate(events);
+
+  // Dated events soonest-first, with ongoing ones (no date to sort by)
+  // spread through the deck rather than piled at the end.
+  const dated = sortByDate(events.filter(event => !event.ongoing));
+  const ongoing = events.filter(event => event.ongoing);
+  if (!ongoing.length) return dated;
+
+  const deck = [];
+  let next = 0;
+  dated.forEach((event, i) => {
+    deck.push(event);
+    if ((i + 1) % ONGOING_EVERY === 0 && next < ongoing.length) deck.push(ongoing[next++]);
+  });
+  return deck.concat(ongoing.slice(next));
 };
 
 /**

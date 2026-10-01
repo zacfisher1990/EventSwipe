@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Dotknij, aby zobaczyć szczegóły',
     seeTickets: 'Zobacz bilety',
     findTickets: 'Znajdź bilety',
+    availableDaily: "Dostępne codziennie",
     allCaughtUp: 'Wszystko obejrzane!',
     noMoreEvents: 'Brak kolejnych wydarzeń',
     checkBackLater: 'Wróć później lub zmień filtry.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'O wydarzeniu',
     getTickets: 'Kup bilety',
+    bookNow: "Zarezerwuj",
     getDirections: 'Pokaż trasę',
     reportEvent: 'Zgłoś wydarzenie',
     deleteEvent: 'Usuń wydarzenie',

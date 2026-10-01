@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Tap for details',
     seeTickets: 'See tickets',
     findTickets: 'Find tickets',
+    availableDaily: "Available daily",
     allCaughtUp: "You're all caught up!",
     noMoreEvents: 'No more events to show',
     checkBackLater: 'Check back later or adjust your filters.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'About',
     getTickets: 'Get Tickets',
+    bookNow: "Book now",
     getDirections: 'Get directions',
     reportEvent: 'Report Event',
     deleteEvent: 'Delete Event',

@@ -39,6 +39,7 @@ export default {
     tapForDetails: '탭하여 상세보기',
     seeTickets: '티켓 보기',
     findTickets: '티켓 찾기',
+    availableDaily: "매일 이용 가능",
     allCaughtUp: '모두 확인했어요!',
     noMoreEvents: '더 이상 이벤트가 없습니다',
     checkBackLater: '나중에 다시 확인하거나 필터를 조정해 보세요.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: '상세 정보',
     getTickets: '티켓 구매',
+    bookNow: "지금 예약",
     getDirections: '길찾기',
     reportEvent: '이벤트 신고',
     deleteEvent: '이벤트 삭제',

@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'انقر لعرض التفاصيل',
     seeTickets: 'عرض التذاكر',
     findTickets: 'البحث عن تذاكر',
+    availableDaily: "متاح يوميًا",
     allCaughtUp: 'لقد شاهدت كل الفعاليات!',
     noMoreEvents: 'لا توجد فعاليات أخرى لعرضها',
     checkBackLater: 'عُد لاحقاً أو عدّل معايير التصفية.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'حول',
     getTickets: 'شراء التذاكر',
+    bookNow: "احجز الآن",
     getDirections: 'الحصول على الاتجاهات',
     reportEvent: 'الإبلاغ عن الفعالية',
     deleteEvent: 'حذف الفعالية',

@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'タップして詳細を見る',
     seeTickets: 'チケットを見る',
     findTickets: 'チケットを探す',
+    availableDaily: "毎日開催",
     allCaughtUp: 'すべてチェック済み！',
     noMoreEvents: '表示するイベントがありません',
     checkBackLater: 'あとでまた確認するか、フィルターを調整してください。',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: '詳細',
     getTickets: 'チケットを購入',
+    bookNow: "今すぐ予約",
     getDirections: 'ルートを表示',
     reportEvent: 'イベントを報告',
     deleteEvent: 'イベントを削除',

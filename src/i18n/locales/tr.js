@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Detaylar için dokun',
     seeTickets: 'Biletleri gör',
     findTickets: 'Bilet bul',
+    availableDaily: "Her gün mevcut",
     allCaughtUp: 'Hepsini gördün!',
     noMoreEvents: 'Gösterilecek başka etkinlik yok',
     checkBackLater: 'Daha sonra tekrar kontrol et veya filtrelerini ayarla.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'Hakkında',
     getTickets: 'Bilet Al',
+    bookNow: "Rezervasyon yap",
     getDirections: 'Yol tarifi al',
     reportEvent: 'Etkinliği Bildir',
     deleteEvent: 'Etkinliği Sil',

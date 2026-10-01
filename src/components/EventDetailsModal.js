@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import CommentsSection from './CommentsSection';
 import { useAuth } from '../context/AuthContext';
+import { eventDateText, ticketButtonLabel } from '../utils/eventDisplay';
 import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -548,7 +549,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
           ) : (
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color="#4ECDC4" />
-              <Text style={styles.infoText}>{event.date}{event.time ? ` • ${event.time}` : ''}</Text>
+              <Text style={styles.infoText}>{eventDateText(event)}</Text>
             </View>
           )}
 
@@ -577,10 +578,15 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
             <TouchableOpacity style={styles.ticketButton} onPress={handleGetTickets}>
               <Ionicons name="ticket-outline" size={24} color="#fff" />
               <Text style={styles.ticketButtonText}>
-                {event.ticketUrl ? i18n.t('eventDetails.getTickets') : i18n.t('discover.findTickets')}
+                {ticketButtonLabel(event, event.ticketUrl ? i18n.t('eventDetails.getTickets') : i18n.t('discover.findTickets'))}
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Source credit, when the provider requires one */}
+          {event.attribution ? (
+            <Text style={styles.attribution}>{event.attribution}</Text>
+          ) : null}
 
           {/* Comments */}
           <View onLayout={(e) => { commentsY.current = e.nativeEvent.layout.y; }}>
@@ -878,6 +884,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 8,
+  },
+  attribution: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 10,
   },
   ticketButtonText: {
     color: '#fff',

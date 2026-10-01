@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Натисни для деталей',
     seeTickets: 'Переглянути квитки',
     findTickets: 'Знайти квитки',
+    availableDaily: "Доступно щодня",
     allCaughtUp: 'Ти все переглянув!',
     noMoreEvents: 'Більше немає подій',
     checkBackLater: 'Повернись пізніше або зміни фільтри.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'Про подію',
     getTickets: 'Купити квитки',
+    bookNow: "Забронювати",
     getDirections: 'Як дістатися',
     reportEvent: 'Поскаржитися',
     deleteEvent: 'Видалити подію',

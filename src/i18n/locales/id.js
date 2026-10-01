@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Ketuk untuk detail',
     seeTickets: 'Lihat tiket',
     findTickets: 'Cari tiket',
+    availableDaily: "Tersedia setiap hari",
     allCaughtUp: 'Kamu sudah lihat semua!',
     noMoreEvents: 'Tidak ada event lagi',
     checkBackLater: 'Cek lagi nanti atau sesuaikan filtermu.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'Tentang',
     getTickets: 'Beli Tiket',
+    bookNow: "Pesan sekarang",
     getDirections: 'Petunjuk arah',
     reportEvent: 'Laporkan Event',
     deleteEvent: 'Hapus Event',

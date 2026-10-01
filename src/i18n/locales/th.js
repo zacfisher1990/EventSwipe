@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'แตะเพื่อดูรายละเอียด',
     seeTickets: 'ดูบัตร',
     findTickets: 'ค้นหาบัตร',
+    availableDaily: "เปิดให้บริการทุกวัน",
     allCaughtUp: 'คุณดูครบหมดแล้ว!',
     noMoreEvents: 'ไม่มีอีเวนต์เพิ่มเติมให้แสดง',
     checkBackLater: 'กลับมาดูใหม่ภายหลังหรือปรับตัวกรองของคุณ',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'เกี่ยวกับ',
     getTickets: 'ซื้อบัตร',
+    bookNow: "จองเลย",
     getDirections: 'ดูเส้นทาง',
     reportEvent: 'รายงานอีเวนต์',
     deleteEvent: 'ลบอีเวนต์',

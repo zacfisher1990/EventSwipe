@@ -10,6 +10,7 @@ import SaveFireworks from '../components/SaveFireworks';
 import { submitReport } from '../services/reportService';
 import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
+import { eventDateText, ticketButtonLabel } from '../utils/eventDisplay';
 import { perfMark, perfMarkAfterPaint, perfSummary } from '../utils/perf';
 
 export default function HomeScreen() {
@@ -184,7 +185,7 @@ export default function HomeScreen() {
             {(event.source === 'ticketmaster' || event.source === 'seatgeek' || event.ticketUrl) && (
               <TouchableOpacity onPress={handleTicketPress} style={styles.ticketButton}>
                 <Text style={styles.ticketButtonText}>
-                  {event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets')}
+                  {ticketButtonLabel(event, event.ticketUrl ? i18n.t('discover.seeTickets') : i18n.t('discover.findTickets'))}
                 </Text>
               </TouchableOpacity>
             )}
@@ -202,7 +203,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            <Text style={styles.date}>{event.date}{event.time ? ` • ${event.time}` : ''}</Text>
+            <Text style={styles.date}>{eventDateText(event)}</Text>
           )}
           <Text style={styles.location} numberOfLines={1}>{event.location}</Text>
           {event.price && event.price !== 'See tickets' && (

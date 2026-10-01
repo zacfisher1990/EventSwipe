@@ -39,6 +39,7 @@ export default {
     tapForDetails: '点击查看详情',
     seeTickets: '查看门票',
     findTickets: '查找门票',
+    availableDaily: "每日开放",
     allCaughtUp: '你已经看完所有活动了！',
     noMoreEvents: '没有更多活动可显示',
     checkBackLater: '稍后再来看看或调整你的筛选条件。',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: '关于',
     getTickets: '购买门票',
+    bookNow: "立即预订",
     getDirections: '获取路线',
     reportEvent: '举报活动',
     deleteEvent: '删除活动',

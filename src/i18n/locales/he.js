@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'הקש לפרטים',
     seeTickets: 'צפה בכרטיסים',
     findTickets: 'חפש כרטיסים',
+    availableDaily: "זמין מדי יום",
     allCaughtUp: 'צפית בהכל!',
     noMoreEvents: 'אין עוד אירועים להצגה',
     checkBackLater: 'חזור מאוחר יותר או שנה את הסינון.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'אודות',
     getTickets: 'רכוש כרטיסים',
+    bookNow: "הזמינו עכשיו",
     getDirections: 'קבל הוראות הגעה',
     reportEvent: 'דווח על אירוע',
     deleteEvent: 'מחק אירוע',

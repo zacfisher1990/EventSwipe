@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getSavedEvents, unsaveEvent } from '../services/eventService';
 import EventDetailsModal from '../components/EventDetailsModal';
 import i18n from '../i18n';
+import { isOngoing, eventDateText } from '../utils/eventDisplay';
 
 // Parse date string in multiple formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
 const parseEventDate = (dateString) => {
@@ -32,14 +33,15 @@ const parseEventDate = (dateString) => {
   return isNaN(date.getTime()) ? null : date;
 };
 
-// Filter out past events and sort by date
+// Filter out past events and sort by date. Ongoing events (no fixed date)
+// never expire and are listed after the dated ones.
 const filterAndSortEvents = (events) => {
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Start of today
   
-  return events
+  const dated = events
     .filter(event => {
-      if (!event.date) return false;
+      if (isOngoing(event) || !event.date) return false;
       const eventDate = parseEventDate(event.date);
       return eventDate && eventDate >= now;
     })
@@ -48,6 +50,7 @@ const filterAndSortEvents = (events) => {
       const dateB = parseEventDate(b.date);
       return (dateA || 0) - (dateB || 0);
     });
+  return [...dated, ...events.filter(isOngoing)];
 };
 
 export default function SavedScreen() {
@@ -128,7 +131,7 @@ const handleUnsaveFromModal = () => {
       <View style={styles.eventInfo}>
         <Text style={styles.eventCategory}>{item.category?.toUpperCase()}</Text>
         <Text style={styles.eventTitle}>{item.title}</Text>
-        <Text style={styles.eventDate}>{item.date} • {item.time}</Text>
+        <Text style={styles.eventDate}>{isOngoing(item) ? eventDateText(item) : `${item.date} • ${item.time}`}</Text>
         <Text style={styles.eventLocation}>{item.location}</Text>
       </View>
     </TouchableOpacity>

@@ -39,6 +39,7 @@ export default {
     tapForDetails: 'Nhấn để xem chi tiết',
     seeTickets: 'Xem vé',
     findTickets: 'Tìm vé',
+    availableDaily: "Có hằng ngày",
     allCaughtUp: 'Bạn đã xem hết rồi!',
     noMoreEvents: 'Không còn sự kiện nào để hiển thị',
     checkBackLater: 'Quay lại sau hoặc điều chỉnh bộ lọc của bạn.',
@@ -159,6 +160,7 @@ export default {
   eventDetails: {
     about: 'Giới thiệu',
     getTickets: 'Mua vé',
+    bookNow: "Đặt ngay",
     getDirections: 'Chỉ đường',
     reportEvent: 'Báo cáo sự kiện',
     deleteEvent: 'Xóa sự kiện',
