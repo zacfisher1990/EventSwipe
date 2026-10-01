@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Tạo tài khoản miễn phí để không mất các sự kiện đã lưu.",
       post: "Tạo tài khoản miễn phí để đăng sự kiện của riêng bạn.",
+      comment: "Tạo tài khoản miễn phí để tham gia trò chuyện.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Bình luận",
+    empty: "Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ về sự kiện này.",
+    placeholder: "Thêm bình luận…",
+    post: "Đăng",
+    signInToComment: "Đăng nhập để bình luận",
+    chooseName: "Chọn tên hiển thị",
+    nameHint: "Tên này hiển thị bên cạnh bình luận của bạn.",
+    namePlaceholder: "Tên hiển thị",
+    nameInvalid: "Dùng từ 2 đến 20 ký tự.",
+    notAllowed: "Hãy giữ thái độ thân thiện — ngôn từ đó không được phép.",
+    noLinks: "Không được phép chèn liên kết trong bình luận.",
+    postFailed: "Không thể đăng bình luận. Vui lòng thử lại.",
+    report: "Báo cáo bình luận",
+    reportConfirm: "Báo cáo bình luận này là không phù hợp?",
+    reported: "Cảm ơn bạn, chúng tôi sẽ xem xét.",
+    block: "Chặn người dùng",
+    blockConfirm: "Bạn sẽ không còn thấy bình luận từ %{name}.",
+    deleteConfirm: "Xóa bình luận này?",
+    justNow: "Vừa xong",
   },
 
   // Notifications

@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Załóż darmowe konto, aby nie stracić zapisanych wydarzeń.",
       post: "Załóż darmowe konto, aby publikować własne wydarzenia.",
+      comment: "Załóż darmowe konto, aby dołączyć do rozmowy.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Komentarze",
+    empty: "Brak komentarzy. Napisz jako pierwszy coś o tym wydarzeniu.",
+    placeholder: "Dodaj komentarz…",
+    post: "Opublikuj",
+    signInToComment: "Zaloguj się, aby komentować",
+    chooseName: "Wybierz nazwę wyświetlaną",
+    nameHint: "Jest widoczna obok Twoich komentarzy.",
+    namePlaceholder: "Nazwa wyświetlana",
+    nameInvalid: "Użyj od 2 do 20 znaków.",
+    notAllowed: "Zachowaj kulturę — taki język jest niedozwolony.",
+    noLinks: "Linki w komentarzach są niedozwolone.",
+    postFailed: "Nie udało się opublikować komentarza. Spróbuj ponownie.",
+    report: "Zgłoś komentarz",
+    reportConfirm: "Zgłosić ten komentarz jako nieodpowiedni?",
+    reported: "Dziękujemy, sprawdzimy to.",
+    block: "Zablokuj użytkownika",
+    blockConfirm: "Nie zobaczysz już komentarzy użytkownika %{name}.",
+    deleteConfirm: "Usunąć ten komentarz?",
+    justNow: "Przed chwilą",
   },
 
   // Notifications

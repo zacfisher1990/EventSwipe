@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Create a free account so you don't lose your saved events.",
       post: "Create a free account to post your own events.",
+      comment: "Create a free account to join the conversation.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Comments",
+    empty: "No comments yet. Be the first to share something about this event.",
+    placeholder: "Add a comment…",
+    post: "Post",
+    signInToComment: "Sign in to comment",
+    chooseName: "Choose a display name",
+    nameHint: "This is shown next to your comments.",
+    namePlaceholder: "Display name",
+    nameInvalid: "Use 2–20 characters.",
+    notAllowed: "Please keep it friendly — that language isn't allowed.",
+    noLinks: "Links aren't allowed in comments.",
+    postFailed: "Couldn't post your comment. Please try again.",
+    report: "Report comment",
+    reportConfirm: "Report this comment as inappropriate?",
+    reported: "Thanks — we'll review it.",
+    block: "Block user",
+    blockConfirm: "You won't see comments from %{name} anymore.",
+    deleteConfirm: "Delete this comment?",
+    justNow: "Just now",
   },
 
   // Notifications

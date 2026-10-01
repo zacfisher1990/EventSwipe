@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "创建免费账户，以免丢失已保存的活动。",
       post: "创建免费账户即可发布你自己的活动。",
+      comment: "创建免费账户，加入讨论。",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "评论",
+    empty: "还没有评论。来第一个分享这场活动吧。",
+    placeholder: "添加评论…",
+    post: "发布",
+    signInToComment: "登录后评论",
+    chooseName: "选择显示名称",
+    nameHint: "会显示在你的评论旁边。",
+    namePlaceholder: "显示名称",
+    nameInvalid: "请使用 2–20 个字符。",
+    notAllowed: "请保持友善，不允许使用此类语言。",
+    noLinks: "评论中不允许包含链接。",
+    postFailed: "评论发布失败，请重试。",
+    report: "举报评论",
+    reportConfirm: "要举报这条评论不当吗？",
+    reported: "谢谢，我们会进行审核。",
+    block: "屏蔽用户",
+    blockConfirm: "你将不再看到 %{name} 的评论。",
+    deleteConfirm: "删除这条评论？",
+    justNow: "刚刚",
   },
 
   // Notifications

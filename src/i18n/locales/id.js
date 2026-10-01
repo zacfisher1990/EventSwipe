@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Buat akun gratis agar acara yang kamu simpan tidak hilang.",
       post: "Buat akun gratis untuk memposting acaramu sendiri.",
+      comment: "Buat akun gratis untuk ikut dalam percakapan.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Komentar",
+    empty: "Belum ada komentar. Jadilah yang pertama membagikan sesuatu tentang acara ini.",
+    placeholder: "Tambahkan komentar…",
+    post: "Kirim",
+    signInToComment: "Masuk untuk berkomentar",
+    chooseName: "Pilih nama tampilan",
+    nameHint: "Nama ini ditampilkan di samping komentarmu.",
+    namePlaceholder: "Nama tampilan",
+    nameInvalid: "Gunakan 2–20 karakter.",
+    notAllowed: "Tetap ramah ya — bahasa seperti itu tidak diizinkan.",
+    noLinks: "Tautan tidak diizinkan dalam komentar.",
+    postFailed: "Komentarmu tidak dapat dikirim. Coba lagi.",
+    report: "Laporkan komentar",
+    reportConfirm: "Laporkan komentar ini sebagai tidak pantas?",
+    reported: "Terima kasih, kami akan meninjaunya.",
+    block: "Blokir pengguna",
+    blockConfirm: "Kamu tidak akan melihat komentar dari %{name} lagi.",
+    deleteConfirm: "Hapus komentar ini?",
+    justNow: "Baru saja",
   },
 
   // Notifications

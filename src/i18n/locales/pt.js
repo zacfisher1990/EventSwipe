@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Crie uma conta grátis para não perder seus eventos salvos.",
       post: "Crie uma conta grátis para publicar seus próprios eventos.",
+      comment: "Crie uma conta grátis para participar da conversa.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Comentários",
+    empty: "Ainda não há comentários. Seja o primeiro a compartilhar algo sobre este evento.",
+    placeholder: "Adicione um comentário…",
+    post: "Publicar",
+    signInToComment: "Entre para comentar",
+    chooseName: "Escolha um nome de exibição",
+    nameHint: "Ele aparece ao lado dos seus comentários.",
+    namePlaceholder: "Nome de exibição",
+    nameInvalid: "Use de 2 a 20 caracteres.",
+    notAllowed: "Mantenha um tom amigável: essa linguagem não é permitida.",
+    noLinks: "Links não são permitidos nos comentários.",
+    postFailed: "Não foi possível publicar seu comentário. Tente novamente.",
+    report: "Denunciar comentário",
+    reportConfirm: "Denunciar este comentário como inadequado?",
+    reported: "Obrigado, vamos analisar.",
+    block: "Bloquear usuário",
+    blockConfirm: "Você não verá mais os comentários de %{name}.",
+    deleteConfirm: "Excluir este comentário?",
+    justNow: "Agora mesmo",
   },
 
   // Notifications

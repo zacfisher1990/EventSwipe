@@ -73,13 +73,119 @@ exports.onReportCreated = functions.firestore
   });
 
 /**
- * Remove a user's Firestore doc when their auth account is deleted — including
- * guest accounts cleaned up after the guest signs in to an existing account.
+ * When an auth account is deleted (including guests cleaned up after signing
+ * in to an existing account), remove its Firestore doc and its comments.
  */
 exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
   await db.collection('users').doc(user.uid).delete();
+
+  // Batches hold at most 500 writes
+  while (true) {
+    const comments = await db.collection('comments').where('authorId', '==', user.uid).limit(500).get();
+    if (comments.empty) break;
+    const batch = db.batch();
+    comments.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+  }
   return null;
 });
+
+// ============================================================
+// COMMENT MODERATION
+// Clients can only create and delete their own comments (firestore.rules);
+// hiding is done here. Keep the word list in sync with src/utils/moderation.js.
+// ============================================================
+
+const COMMENT_HIDE_THRESHOLD = 3;
+
+const BLOCKED_WORDS = [
+  'fuck', 'fucking', 'fucker', 'motherfucker', 'shit', 'bullshit', 'bitch',
+  'asshole', 'cunt', 'whore', 'slut', 'faggot', 'fag', 'nigger', 'nigga',
+  'retard', 'kike', 'spic', 'chink', 'tranny', 'wetback',
+];
+const BLOCKED_PREFIXES = ['fuck', 'nigg', 'fagg'];
+const LINK_PATTERN = /(https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(com|net|org|io|co|ly|me|app|xyz|info|biz|ru|cn|link|shop)\b/i;
+
+const moderationProblem = (text) => {
+  const normalized = (text || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[@4]/g, 'a').replace(/[3]/g, 'e').replace(/[1!|]/g, 'i')
+    .replace(/[0]/g, 'o').replace(/[$5]/g, 's');
+  const words = normalized.split(/[^a-z]+/).filter(Boolean);
+  if (words.some((w) => BLOCKED_WORDS.includes(w) || BLOCKED_PREFIXES.some((p) => w.startsWith(p)))) {
+    return 'language';
+  }
+  return LINK_PATTERN.test(text || '') ? 'link' : null;
+};
+
+const notifyAdminAboutComment = (subject, comment, commentId, extra) =>
+  db.collection('mail').add({
+    to: ADMIN_EMAIL,
+    message: {
+      subject,
+      text: [
+        extra,
+        `Comment: "${comment.text}"`,
+        `By: ${comment.authorName} (${comment.authorId})`,
+        `Event: ${comment.eventTitle || comment.eventId}`,
+        `Comment ID: ${commentId}`,
+        'Review it on the admin dashboard (Comments tab).',
+      ].join('\n'),
+    },
+  });
+
+/**
+ * Server-side check of every new comment: the app runs the same filter before
+ * posting, but a modified client could skip it.
+ */
+exports.onCommentCreated = functions.firestore
+  .document('comments/{commentId}')
+  .onCreate(async (snap) => {
+    const comment = snap.data();
+    const problem = moderationProblem(comment.text) || moderationProblem(comment.authorName);
+    if (!problem) return null;
+
+    await snap.ref.update({ hidden: true, hiddenReason: `filter:${problem}` });
+    console.log(`Comment ${snap.id} hidden by filter (${problem})`);
+    return null;
+  });
+
+/**
+ * A comment was reported. Count reports from real accounts (guest accounts are
+ * free to create), record the count, hide at the threshold, and tell the admin.
+ */
+exports.onCommentReportCreated = functions.firestore
+  .document('commentReports/{reportId}')
+  .onCreate(async (snap) => {
+    const { commentId } = snap.data();
+    const commentRef = db.collection('comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) return null;
+
+    const reports = await db.collection('commentReports').where('commentId', '==', commentId).get();
+    const reporterIds = [...new Set(reports.docs.map((d) => d.get('reporterId')).filter(Boolean))];
+    let reportCount = 0;
+    for (let i = 0; i < reporterIds.length; i += 100) {
+      const { users } = await admin.auth().getUsers(reporterIds.slice(i, i + 100).map((uid) => ({ uid })));
+      reportCount += users.filter((u) => u.providerData.length > 0).length;
+    }
+
+    const comment = commentDoc.data();
+    const shouldHide = reportCount >= COMMENT_HIDE_THRESHOLD && !comment.hidden;
+    await commentRef.update({
+      reportCount,
+      ...(shouldHide && { hidden: true, hiddenReason: 'reports' }),
+    });
+
+    // First report from a real account, and when it gets hidden
+    if (reportCount === 1 && (comment.reportCount || 0) === 0) {
+      await notifyAdminAboutComment('EventSwipe: a comment was reported', comment, commentId, 'A comment has been reported.');
+    } else if (shouldHide) {
+      await notifyAdminAboutComment(`EventSwipe: comment hidden after ${reportCount} reports`, comment, commentId, 'A comment was automatically hidden.');
+    }
+    return null;
+  });
 
 async function sendThresholdNotification(report, count) {
   const notification = {

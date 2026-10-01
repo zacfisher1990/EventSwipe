@@ -293,9 +293,11 @@ export const AuthProvider = ({ children }) => {
       reauthenticateForDeletion,
       signOut,
       authPrompt,
-      // reason: 'save' | 'post' | null; mode: 'signup' | 'login'
+      // reason: 'save' | 'post' | 'comment' | null; mode: 'signup' | 'login'
       requireAccount: (reason = null, mode = 'signup') => setAuthPrompt({ reason, mode }),
       closeAuthPrompt: () => setAuthPrompt(null),
+      // Reflect a change the app just saved to the user doc (display name, blocks)
+      updateUserProfile: (fields) => setUser(prev => (prev ? { ...prev, ...fields } : prev)),
     }}>
       {children}
     </AuthContext.Provider>

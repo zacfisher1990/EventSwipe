@@ -23,6 +23,39 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == resource.data.reporterId;
     }
 
+    // Comments on events. Anyone signed in (guests included) can read visible
+    // comments; posting needs a real account. Clients can't edit comments or
+    // touch the moderation fields - hiding is done by Cloud Functions / admin.
+    match /comments/{commentId} {
+      allow read: if request.auth != null
+        && (resource.data.hidden == false || resource.data.authorId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.keys().hasOnly(
+             ['eventKey', 'eventId', 'eventTitle', 'text', 'authorId', 'authorName', 'hidden', 'reportCount', 'createdAt'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.eventKey is string && request.resource.data.eventKey.size() > 0
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+        // The name shown must be the author's own saved display name
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 2 && request.resource.data.authorName.size() <= 20
+        && request.resource.data.authorName ==
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+        && request.resource.data.hidden == false
+        && request.resource.data.reportCount == 0
+        && request.resource.data.createdAt == request.time;
+      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+
+    // One report per user per comment (the id is commentId_reporterId, and
+    // there is no update rule). Counted by the onCommentReportCreated function.
+    match /commentReports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.reporterId == request.auth.uid
+        && reportId == request.resource.data.commentId + '_' + request.auth.uid;
+    }
+
     // Analytics - any authenticated user can write, read
     match /eventAnalytics/{eventId} {
       allow read, write: if request.auth != null;

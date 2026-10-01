@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "저장한 이벤트를 잃지 않도록 무료 계정을 만드세요.",
       post: "나만의 이벤트를 올리려면 무료 계정을 만드세요.",
+      comment: "무료 계정을 만들고 대화에 참여하세요.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "댓글",
+    empty: "아직 댓글이 없어요. 이 이벤트에 대해 가장 먼저 이야기해 보세요.",
+    placeholder: "댓글 추가…",
+    post: "게시",
+    signInToComment: "로그인하고 댓글 달기",
+    chooseName: "표시 이름 선택",
+    nameHint: "댓글 옆에 표시됩니다.",
+    namePlaceholder: "표시 이름",
+    nameInvalid: "2~20자로 입력해 주세요.",
+    notAllowed: "서로 배려해 주세요. 해당 표현은 사용할 수 없어요.",
+    noLinks: "댓글에는 링크를 넣을 수 없어요.",
+    postFailed: "댓글을 게시하지 못했어요. 다시 시도해 주세요.",
+    report: "댓글 신고",
+    reportConfirm: "이 댓글을 부적절한 내용으로 신고할까요?",
+    reported: "감사합니다. 검토하겠습니다.",
+    block: "사용자 차단",
+    blockConfirm: "%{name} 님의 댓글이 더 이상 표시되지 않아요.",
+    deleteConfirm: "이 댓글을 삭제할까요?",
+    justNow: "방금 전",
   },
 
   // Notifications

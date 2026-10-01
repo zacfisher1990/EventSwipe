@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "צרו חשבון חינם כדי לא לאבד את האירועים ששמרתם.",
       post: "צרו חשבון חינם כדי לפרסם אירועים משלכם.",
+      comment: "צרו חשבון חינם כדי להצטרף לשיחה.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "תגובות",
+    empty: "אין עדיין תגובות. היו הראשונים לשתף משהו על האירוע הזה.",
+    placeholder: "הוסיפו תגובה…",
+    post: "פרסום",
+    signInToComment: "התחברו כדי להגיב",
+    chooseName: "בחרו שם תצוגה",
+    nameHint: "השם מוצג ליד התגובות שלכם.",
+    namePlaceholder: "שם תצוגה",
+    nameInvalid: "השתמשו ב-2 עד 20 תווים.",
+    notAllowed: "אנא שמרו על שפה מכבדת – השפה הזו אינה מותרת.",
+    noLinks: "אסור לכלול קישורים בתגובות.",
+    postFailed: "לא ניתן היה לפרסם את התגובה. נסו שוב.",
+    report: "דיווח על תגובה",
+    reportConfirm: "לדווח על התגובה הזו כבלתי הולמת?",
+    reported: "תודה, נבדוק את זה.",
+    block: "חסימת משתמש",
+    blockConfirm: "לא תראו יותר תגובות של %{name}.",
+    deleteConfirm: "למחוק את התגובה הזו?",
+    justNow: "ממש עכשיו",
   },
 
   // Notifications

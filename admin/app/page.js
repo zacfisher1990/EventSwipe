@@ -93,6 +93,7 @@ function Overview({ user }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'lastActive', dir: -1 });
   const [expanded, setExpanded] = useState(null);
+  const [tab, setTab] = useState('users');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,9 +176,16 @@ function Overview({ user }) {
         </div>
       </header>
 
-      {error && <p className="error">{error}</p>}
+      <nav className="tabs">
+        <button className={tab === 'users' ? 'tab active' : 'tab'} onClick={() => setTab('users')}>Users</button>
+        <button className={tab === 'comments' ? 'tab active' : 'tab'} onClick={() => setTab('comments')}>Comments</button>
+      </nav>
 
-      {totals && (
+      {tab === 'comments' && <Comments user={user} />}
+
+      {tab === 'users' && error && <p className="error">{error}</p>}
+
+      {tab === 'users' && totals && (
         <section className="tiles">
           <Tile
             label="Users"
@@ -196,7 +204,7 @@ function Overview({ user }) {
         </section>
       )}
 
-      {data && (
+      {tab === 'users' && data && (
         <section className="card">
           <div className="tablebar">
             <input
@@ -265,13 +273,146 @@ function Overview({ user }) {
         </section>
       )}
 
-      {data?.orphanEvents?.length > 0 && (
+      {tab === 'users' && data?.orphanEvents?.length > 0 && (
         <section className="card">
           <h2>Events without a known poster ({data.orphanEvents.length})</h2>
           <EventList events={data.orphanEvents} />
         </section>
       )}
     </main>
+  );
+}
+
+// Comment moderation: review reported/hidden comments, hide or delete them,
+// and disable abusive accounts.
+function Comments({ user }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [onlyFlagged, setOnlyFlagged] = useState(false);
+  const [busy, setBusy] = useState(null);
+
+  const call = useCallback(async (method, body) => {
+    const token = await user.getIdToken();
+    const res = await fetch('/api/comments', {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    return res.json();
+  }, [user]);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      setData(await call('GET'));
+    } catch (e) {
+      setError(e.message);
+    }
+  }, [call]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (key, body, confirmText) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setBusy(key);
+    try {
+      await call('POST', body);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setBusy(null);
+  };
+
+  if (error && !data) return <p className="error">{error}</p>;
+  if (!data) return <p className="muted">Loading comments…</p>;
+
+  const flagged = data.comments.filter((c) => c.hidden || c.reportCount > 0);
+  const rows = onlyFlagged ? flagged : data.comments;
+
+  return (
+    <section className="card">
+      <div className="tablebar">
+        <label className="check">
+          <input type="checkbox" checked={onlyFlagged} onChange={(e) => setOnlyFlagged(e.target.checked)} />
+          Only reported or hidden ({flagged.length})
+        </label>
+        <span className="muted small">{rows.length} of {data.comments.length} comments</span>
+        <button className="ghost" onClick={load}>Refresh</button>
+      </div>
+      {error && <p className="error">{error}</p>}
+      {rows.length === 0 ? (
+        <p className="muted">{onlyFlagged ? 'Nothing reported or hidden.' : 'No comments yet.'}</p>
+      ) : (
+        <div className="scroll">
+          <table className="events">
+            <thead>
+              <tr>
+                <th>Comment</th>
+                <th>Author</th>
+                <th>Event</th>
+                <th>Posted</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => {
+                const author = data.authors[c.authorId];
+                return (
+                  <tr key={c.id}>
+                    <td className="commentText">{c.text}</td>
+                    <td>
+                      <div>{c.authorName}</div>
+                      <div className="muted small">{author?.email || (author ? 'no email' : 'account deleted')}</div>
+                      {author?.disabled && <span className="badge warn">disabled</span>}
+                    </td>
+                    <td className="small">{c.eventTitle}</td>
+                    <td className="small">{fmtAgo(c.createdAt)}</td>
+                    <td>
+                      {c.hidden
+                        ? <span className="badge warn">hidden{c.hiddenReason ? ` · ${c.hiddenReason}` : ''}</span>
+                        : <span className="badge ok">visible</span>}
+                      {c.reportCount > 0 && <span className="badge warn">{c.reportCount} reports</span>}
+                    </td>
+                    <td className="rowActions">
+                      <button
+                        className="ghost"
+                        disabled={busy === c.id}
+                        onClick={() => act(c.id, { action: c.hidden ? 'unhide' : 'hide', id: c.id })}
+                      >
+                        {c.hidden ? 'Unhide' : 'Hide'}
+                      </button>
+                      <button
+                        className="ghost danger"
+                        disabled={busy === c.id}
+                        onClick={() => act(c.id, { action: 'delete', id: c.id }, 'Delete this comment permanently?')}
+                      >
+                        Delete
+                      </button>
+                      {author && (
+                        <button
+                          className="ghost danger"
+                          disabled={busy === c.authorId}
+                          onClick={() => act(
+                            c.authorId,
+                            { action: author.disabled ? 'enableUser' : 'disableUser', uid: c.authorId },
+                            author.disabled ? null : `Disable ${c.authorName}'s account? They won't be able to sign in or post.`
+                          )}
+                        >
+                          {author.disabled ? 'Enable user' : 'Disable user'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

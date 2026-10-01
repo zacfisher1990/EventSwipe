@@ -16,8 +16,11 @@ import {
   Share,
   Dimensions,
   TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import CommentsSection from './CommentsSection';
+import { useAuth } from '../context/AuthContext';
 import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -231,6 +234,36 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
     }
   }, [visible]);
 
+  const { requireAccount } = useAuth();
+  const scrollRef = useRef(null);
+  const commentsY = useRef(0);
+  const containerRef = useRef(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  // Keep the sheet above the keyboard. Measures the real overlap rather than
+  // assuming it, so it's a no-op where the system already resized the window.
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const keyboardTop = e.endCoordinates.screenY;
+      containerRef.current?.measureInWindow((x, y, width, height) => {
+        const overlap = y + height - keyboardTop;
+        setKeyboardInset((prev) => Math.max(0, Math.round(prev + overlap)));
+      });
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardInset(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  // Bring the comment box above the keyboard once it has opened
+  const scrollToComments = () => {
+    setTimeout(() => scrollRef.current?.scrollTo({ y: commentsY.current, animated: true }), 300);
+  };
+
   const handleClose = () => {
     if (isClosing.current) return;
     isClosing.current = true;
@@ -420,10 +453,12 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
         </TouchableWithoutFeedback>
       </Animated.View>
 
-      {/* Modal Content */}
+      {/* Modal Content (shrinks to sit above the keyboard when commenting) */}
       <Animated.View 
+        ref={containerRef}
         style={[
           styles.container,
+          keyboardInset > 0 && { bottom: keyboardInset, height: SCREEN_HEIGHT * 0.9 - keyboardInset },
           { transform: [{ translateY }] }
         ]}
       >
@@ -454,7 +489,9 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
         </View>
 
         <ScrollView 
+          ref={scrollRef}
           style={styles.content} 
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           onScrollEndDrag={onScrollEndDrag}
           scrollEventThrottle={16}
@@ -544,6 +581,19 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Comments */}
+          <View onLayout={(e) => { commentsY.current = e.nativeEvent.layout.y; }}>
+            <CommentsSection
+              event={event}
+              onInputFocus={scrollToComments}
+              onRequireAccount={() => {
+                // Close this sheet first: iOS can't show two modals at once
+                handleClose();
+                setTimeout(() => requireAccount('comment'), 450);
+              }}
+            />
+          </View>
 
           <View style={styles.bottomPadding} />
         </ScrollView>

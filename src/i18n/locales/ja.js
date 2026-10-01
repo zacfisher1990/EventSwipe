@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "無料アカウントを作成して、保存したイベントを失わないようにしましょう。",
       post: "無料アカウントを作成して、自分のイベントを投稿しましょう。",
+      comment: "無料アカウントを作成して会話に参加しましょう。",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "コメント",
+    empty: "まだコメントはありません。このイベントについて最初に投稿してみましょう。",
+    placeholder: "コメントを追加…",
+    post: "投稿",
+    signInToComment: "ログインしてコメントする",
+    chooseName: "表示名を選択",
+    nameHint: "コメントの横に表示されます。",
+    namePlaceholder: "表示名",
+    nameInvalid: "2〜20文字で入力してください。",
+    notAllowed: "思いやりのある言葉でお願いします。その表現は使用できません。",
+    noLinks: "コメントにリンクは使用できません。",
+    postFailed: "コメントを投稿できませんでした。もう一度お試しください。",
+    report: "コメントを報告",
+    reportConfirm: "このコメントを不適切として報告しますか？",
+    reported: "ありがとうございます。確認します。",
+    block: "ユーザーをブロック",
+    blockConfirm: "%{name}さんのコメントは表示されなくなります。",
+    deleteConfirm: "このコメントを削除しますか？",
+    justNow: "たった今",
   },
 
   // Notifications

@@ -94,3 +94,15 @@ table.events td, table.events th { padding: 8px 6px; }
 }
 .badge.ok { background: var(--ok-bg); color: var(--ok-fg); }
 .badge.warn { background: var(--warn-bg); color: var(--warn-fg); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.tab {
+  background: transparent; color: var(--muted); border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent; padding: 8px 14px;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; flex: 1; }
+.commentText { max-width: 360px; white-space: pre-wrap; word-break: break-word; }
+.rowActions { white-space: nowrap; }
+.rowActions button { padding: 4px 10px; margin: 0 4px 4px 0; font-size: 12px; }
+button.danger { color: var(--warn-fg); }

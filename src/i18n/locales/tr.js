@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Kaydettiğin etkinlikleri kaybetmemek için ücretsiz bir hesap oluştur.",
       post: "Kendi etkinliklerini paylaşmak için ücretsiz bir hesap oluştur.",
+      comment: "Sohbete katılmak için ücretsiz bir hesap oluştur.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Yorumlar",
+    empty: "Henüz yorum yok. Bu etkinlik hakkında ilk yorumu sen yap.",
+    placeholder: "Yorum ekle…",
+    post: "Paylaş",
+    signInToComment: "Yorum yapmak için giriş yap",
+    chooseName: "Bir görünen ad seç",
+    nameHint: "Yorumlarının yanında gösterilir.",
+    namePlaceholder: "Görünen ad",
+    nameInvalid: "2–20 karakter kullan.",
+    notAllowed: "Lütfen nazik ol; bu dile izin verilmiyor.",
+    noLinks: "Yorumlarda bağlantıya izin verilmiyor.",
+    postFailed: "Yorumun paylaşılamadı. Lütfen tekrar dene.",
+    report: "Yorumu şikayet et",
+    reportConfirm: "Bu yorum uygunsuz olarak şikayet edilsin mi?",
+    reported: "Teşekkürler, inceleyeceğiz.",
+    block: "Kullanıcıyı engelle",
+    blockConfirm: "Artık %{name} adlı kullanıcının yorumlarını görmeyeceksin.",
+    deleteConfirm: "Bu yorum silinsin mi?",
+    justNow: "Az önce",
   },
 
   // Notifications

@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "Erstelle ein kostenloses Konto, damit deine gespeicherten Events nicht verloren gehen.",
       post: "Erstelle ein kostenloses Konto, um eigene Events zu veröffentlichen.",
+      comment: "Erstelle ein kostenloses Konto, um mitzureden.",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "Kommentare",
+    empty: "Noch keine Kommentare. Schreib als Erste:r etwas zu diesem Event.",
+    placeholder: "Kommentar hinzufügen…",
+    post: "Posten",
+    signInToComment: "Zum Kommentieren anmelden",
+    chooseName: "Wähle einen Anzeigenamen",
+    nameHint: "Er wird neben deinen Kommentaren angezeigt.",
+    namePlaceholder: "Anzeigename",
+    nameInvalid: "Verwende 2–20 Zeichen.",
+    notAllowed: "Bitte bleib freundlich – diese Ausdrucksweise ist nicht erlaubt.",
+    noLinks: "Links sind in Kommentaren nicht erlaubt.",
+    postFailed: "Dein Kommentar konnte nicht gepostet werden. Bitte versuche es erneut.",
+    report: "Kommentar melden",
+    reportConfirm: "Diesen Kommentar als unangemessen melden?",
+    reported: "Danke – wir sehen uns das an.",
+    block: "Nutzer blockieren",
+    blockConfirm: "Du siehst keine Kommentare von %{name} mehr.",
+    deleteConfirm: "Diesen Kommentar löschen?",
+    justNow: "Gerade eben",
   },
 
   // Notifications

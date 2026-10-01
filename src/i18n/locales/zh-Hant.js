@@ -256,7 +256,31 @@ export default {
     guestPrompt: {
       save: "建立免費帳戶，以免遺失已儲存的活動。",
       post: "建立免費帳戶即可發佈你自己的活動。",
+      comment: "建立免費帳戶，加入討論。",
     },
+  },
+
+  // Event comments
+  comments: {
+    title: "留言",
+    empty: "還沒有留言。來第一個分享這場活動吧。",
+    placeholder: "新增留言…",
+    post: "發佈",
+    signInToComment: "登入後留言",
+    chooseName: "選擇顯示名稱",
+    nameHint: "會顯示在你的留言旁邊。",
+    namePlaceholder: "顯示名稱",
+    nameInvalid: "請使用 2–20 個字元。",
+    notAllowed: "請保持友善，不允許使用此類語言。",
+    noLinks: "留言中不允許包含連結。",
+    postFailed: "留言發佈失敗，請再試一次。",
+    report: "檢舉留言",
+    reportConfirm: "要檢舉這則留言不當嗎？",
+    reported: "謝謝，我們會進行審核。",
+    block: "封鎖使用者",
+    blockConfirm: "你將不再看到 %{name} 的留言。",
+    deleteConfirm: "刪除這則留言？",
+    justNow: "剛剛",
   },
 
   // Notifications
