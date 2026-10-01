@@ -34,6 +34,7 @@ const CATEGORIES = [
   { id: 'networking', labelKey: 'categories.networking', emoji: '🤝' },
   { id: 'family', labelKey: 'categories.family', emoji: '👨‍👩‍👧‍👦' },
   { id: 'outdoor', labelKey: 'categories.outdoor', emoji: '🏕️' },
+  { id: 'experiences', labelKey: 'categories.experiences', emoji: '✨' },
 ];
 
 // Time ranges with i18n keys

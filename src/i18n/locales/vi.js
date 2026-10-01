@@ -126,6 +126,7 @@ export default {
     networking: 'Kết nối',
     family: 'Gia đình',
     outdoor: 'Ngoài trời',
+    experiences: "Trải nghiệm",
     event: 'Sự kiện',
   },
 

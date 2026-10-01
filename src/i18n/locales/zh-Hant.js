@@ -126,6 +126,7 @@ export default {
     networking: '社交聯誼',
     family: '親子',
     outdoor: '戶外',
+    experiences: "體驗",
     event: '活動',
   },
 

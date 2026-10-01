@@ -5,5 +5,5 @@
 //   IOS_CLIENT_ID — CLIENT_ID in the iOS app's GoogleService-Info.plist. Its
 //                   reversed form must also be a URL scheme in ios/EventSwipe/Info.plist.
 // While WEB_CLIENT_ID is empty the Google button is hidden.
-export const WEB_CLIENT_ID = '';
-export const IOS_CLIENT_ID = '';
+export const WEB_CLIENT_ID = '989696282130-1ojf61mj36s9cnocr0l35dli45e2uq4b.apps.googleusercontent.com';
+export const IOS_CLIENT_ID = '989696282130-15kcfirqltmh2dd4fdju95lk11gmee1n.apps.googleusercontent.com';

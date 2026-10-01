@@ -165,7 +165,9 @@ const fetchTicketmaster = async (lat, lng, radius) => {
     }
 
     const events = data._embedded?.events || [];
-    return inferCategoriesFromVenue(events.map(event => transformTicketmasterEvent(event)));
+    return resolveUnknownCategories(
+      inferCategoriesFromVenue(events.map(event => transformTicketmasterEvent(event)))
+    );
   } catch (error) {
     console.error('Ticketmaster fetch error:', error);
     return [];
@@ -200,6 +202,7 @@ const TITLE_KEYWORDS = [
   ['nightlife', ['cabaret', 'burlesque', 'burly-q', 'drag ', 'revue', 'dance party', 'dj set', '21+', 'club night']],
   ['family', ['kids', 'family', 'disney', 'sesame street']],
   ['food', ['tasting', 'food festival', 'brewfest', 'wine ']],
+  ['experiences', [' tour ', ' tours ', 'immersive', 'experience', 'exhibit', 'expo ', 'workshop', 'masterclass', 'escape room', 'museum', 'convention']],
 ];
 
 const categoryFromTitle = (name, only) => {
@@ -209,7 +212,8 @@ const categoryFromTitle = (name, only) => {
   return match ? match[0] : null;
 };
 
-// Map Ticketmaster's classification to the app's categories ('other' = unknown)
+// Map Ticketmaster's classification to the app's categories. 'other' means
+// unknown; fetchTicketmaster resolves it (venue inference, then 'experiences').
 const categorizeTicketmasterEvent = (event, classification) => {
   const segment = classification?.segment?.name?.toLowerCase() || '';
   const genre = classification?.genre?.name?.toLowerCase() || '';
@@ -241,6 +245,12 @@ const inferCategoriesFromVenue = (events) => {
     return total >= 2 && n / total >= 0.75 ? { ...e, category: top } : e;
   });
 };
+
+// The app's filter has no 'other': whatever is still unclassified is filed
+// under Experiences so it stays reachable.
+const FALLBACK_CATEGORY = 'experiences';
+const resolveUnknownCategories = (events) =>
+  events.map((e) => (e.category === 'other' ? { ...e, category: FALLBACK_CATEGORY } : e));
 
 // Transform Ticketmaster event to standard format
 const transformTicketmasterEvent = (event) => {
@@ -1114,6 +1124,17 @@ const CATEGORY_RULES = [
       'outdoor', 'farm ', 'forest', 'nature center', 'botanical garden',
     ],
   },
+  {
+    category: 'experiences',
+    keywords: [
+      'immersive', 'experience', 'walking tour', 'guided tour', 'ghost tour',
+      'city tour', 'sightseeing', 'exhibit', 'exhibition', 'expo ',
+      'convention', 'workshop', 'masterclass', 'escape room', 'pop-up',
+      'pop up', 'scavenger hunt', 'trivia', 'game night', 'psychic',
+      'tarot', 'planetarium', 'open house',
+    ],
+    venueKeywords: ['museum', 'planetarium', 'escape room', 'convention center'],
+  },
 ];
 
 function categorizeEvent(event) {
@@ -1152,7 +1173,8 @@ function categorizeEvent(event) {
     return scores[0].category;
   }
   
-  return 'other';
+  // Unclassifiable events are filed under Experiences (the filter has no 'other')
+  return 'experiences';
 }
 
 async function storeEvents(events) {

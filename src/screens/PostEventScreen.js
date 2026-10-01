@@ -85,6 +85,7 @@ const getCategories = () => [
   { id: 'networking', label: i18n.t('categories.networking'), emoji: '🤝' },
   { id: 'family', label: i18n.t('categories.family'), emoji: '👨‍👩‍👧‍👦' },
   { id: 'outdoor', label: i18n.t('categories.outdoor'), emoji: '🏕️' },
+  { id: 'experiences', label: i18n.t('categories.experiences'), emoji: '✨' },
 ];
 
 export default function PostEventScreen({ navigation, route }) {

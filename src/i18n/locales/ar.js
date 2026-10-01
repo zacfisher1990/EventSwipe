@@ -126,6 +126,7 @@ export default {
     networking: 'تواصل مهني',
     family: 'عائلي',
     outdoor: 'في الهواء الطلق',
+    experiences: "تجارب",
     event: 'فعالية',
   },
 

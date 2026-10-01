@@ -179,8 +179,25 @@ const groupMultiDateEvents = (events) => {
 // All valid filter category IDs
 const VALID_FILTER_CATEGORIES = [
   'music', 'food', 'sports', 'arts', 'nightlife', 
-  'fitness', 'comedy', 'networking', 'family', 'outdoor'
+  'fitness', 'comedy', 'networking', 'family', 'outdoor', 'experiences'
 ];
+
+// Every event gets a category the filter offers: anything unrecognised
+// ('other', 'general', missing) becomes 'experiences', so no event is only
+// reachable with every category selected.
+export const normalizeCategory = (category) => {
+  const id = (category || '').toLowerCase();
+  return VALID_FILTER_CATEGORIES.includes(id) ? id : 'experiences';
+};
+
+// Saved filters from before 'experiences' existed: every category of the time
+// selected meant "everything", so keep it meaning that.
+export const migrateFilters = (filters) => {
+  const selected = filters?.categories;
+  if (!Array.isArray(selected) || selected.includes('experiences')) return filters;
+  const hadAll = VALID_FILTER_CATEGORIES.every(id => id === 'experiences' || selected.includes(id));
+  return hadAll ? { ...filters, categories: null } : filters;
+};
 
 // Categories that the APIs can filter server-side
 const API_FILTERABLE_CATEGORIES = ['music', 'sports', 'comedy', 'arts', 'family'];
@@ -197,6 +214,7 @@ const CATEGORY_PLACEHOLDERS = {
   'fitness': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
   'networking': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
   'outdoor': 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&q=80',
+  'experiences': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
   'other': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
 };
 
@@ -465,7 +483,8 @@ const fetchFirestoreEvents = async (location, radius) => {
 
   return snapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data(), source: 'firebase' }))
-    .filter(event => event.active === true);
+    .filter(event => event.active === true)
+    .map(event => ({ ...event, category: normalizeCategory(event.category) }));
 };
 
 const fetchApiEvents = async (location, radius) => {
@@ -483,10 +502,15 @@ const fetchApiEvents = async (location, radius) => {
     });
     if (!result.data.success) return [];
     // Add placeholder images for events missing them
-    return (result.data.events || []).map(event => ({
-      ...event,
-      image: event.image || CATEGORY_PLACEHOLDERS[event.category] || CATEGORY_PLACEHOLDERS['other'],
-    }));
+    return (result.data.events || []).map(event => {
+      const category = normalizeCategory(event.category);
+      return {
+        ...event,
+        category,
+        // Add placeholder images for events missing them
+        image: event.image || CATEGORY_PLACEHOLDERS[category],
+      };
+    });
   } catch (functionError) {
     perfMark('net:cloudfn-received', { error: true });
     throw functionError;

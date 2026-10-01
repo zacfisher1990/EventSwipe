@@ -126,6 +126,7 @@ export default {
     networking: '交流会',
     family: 'ファミリー',
     outdoor: 'アウトドア',
+    experiences: "体験",
     event: 'イベント',
   },
 

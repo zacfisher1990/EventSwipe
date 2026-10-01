@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import { getEvents } from '../services/eventService';
+import { getEvents, normalizeCategory, migrateFilters } from '../services/eventService';
 import { useAuth } from './AuthContext';
 import { perfMark } from '../utils/perf';
 import { updateSearchArea } from '../services/notificationService';
@@ -246,10 +246,10 @@ export function EventCacheProvider({ children }) {
 
         if (raw) {
           const { events: cachedEvents, filters: cachedFilters } = JSON.parse(raw);
-          const activeFilters = cachedFilters ?? DEFAULT_FILTERS;
+          const activeFilters = migrateFilters(cachedFilters ?? DEFAULT_FILTERS);
           filtersRef.current = activeFilters;
           setFilters(activeFilters);
-          replaceDeck(cachedEvents ?? []);
+          replaceDeck((cachedEvents ?? []).map(e => ({ ...e, category: normalizeCategory(e.category) })));
           perfMark('cache:hydrated-from-disk', { count: cachedEvents?.length ?? 0 });
           // Silently refresh in background — user already sees content
           fetchEvents(activeFilters, { background: true });

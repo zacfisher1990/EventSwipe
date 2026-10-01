@@ -30,6 +30,12 @@
           <string>com.eventswipeapp.eventswipe</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.989696282130-15kcfirqltmh2dd4fdju95lk11gmee1n</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>24</string>

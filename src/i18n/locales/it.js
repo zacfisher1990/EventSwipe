@@ -126,6 +126,7 @@ export default {
     networking: 'Networking',
     family: 'Famiglia',
     outdoor: 'All\'aperto',
+    experiences: "Esperienze",
     event: 'Evento',
   },
 

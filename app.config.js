@@ -61,6 +61,9 @@ export default {
       "@react-native-community/datetimepicker",
       "expo-localization",
       "expo-apple-authentication",
+      ["@react-native-google-signin/google-signin", {
+        iosUrlScheme: "com.googleusercontent.apps.989696282130-15kcfirqltmh2dd4fdju95lk11gmee1n"
+      }],
       ["expo-notifications", {
         color: "#4ECDC4"
       }]
