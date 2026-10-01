@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "EventSwipe",
     slug: "EventSwipe",
-    version: "1.0.25",
+    version: "1.0.26",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
