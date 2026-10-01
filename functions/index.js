@@ -165,7 +165,7 @@ const fetchTicketmaster = async (lat, lng, radius) => {
     }
 
     const events = data._embedded?.events || [];
-    return events.map(event => transformTicketmasterEvent(event));
+    return inferCategoriesFromVenue(events.map(event => transformTicketmasterEvent(event)));
   } catch (error) {
     console.error('Ticketmaster fetch error:', error);
     return [];
@@ -193,6 +193,55 @@ const pickImage = (images) => {
   return best?.url || null;
 };
 
+// Title keywords, checked in order. Used for comedy (often filed under Arts &
+// Theatre) and for events Ticketmaster leaves unclassified ("Undefined").
+const TITLE_KEYWORDS = [
+  ['comedy', ['comedy', 'comedian', 'stand-up', 'standup', 'improv']],
+  ['nightlife', ['cabaret', 'burlesque', 'burly-q', 'drag ', 'revue', 'dance party', 'dj set', '21+', 'club night']],
+  ['family', ['kids', 'family', 'disney', 'sesame street']],
+  ['food', ['tasting', 'food festival', 'brewfest', 'wine ']],
+];
+
+const categoryFromTitle = (name, only) => {
+  const text = ` ${(name || '').toLowerCase()} `;
+  const match = TITLE_KEYWORDS.find(([category, words]) =>
+    (!only || only.includes(category)) && words.some(word => text.includes(word)));
+  return match ? match[0] : null;
+};
+
+// Map Ticketmaster's classification to the app's categories ('other' = unknown)
+const categorizeTicketmasterEvent = (event, classification) => {
+  const segment = classification?.segment?.name?.toLowerCase() || '';
+  const genre = classification?.genre?.name?.toLowerCase() || '';
+
+  if (genre === 'comedy' || categoryFromTitle(event.name, ['comedy'])) return 'comedy';
+  if (genre === 'family' || genre.includes("children")) return 'family';
+  if (segment === 'music') return 'music';
+  if (segment === 'sports') return 'sports';
+  if (segment === 'arts & theatre' || segment === 'film') return 'arts';
+  return categoryFromTitle(event.name) || 'other';
+};
+
+// Still-unknown events take their venue's usual category when the venue's
+// other events in this batch clearly agree (e.g. a concert hall).
+const inferCategoriesFromVenue = (events) => {
+  const byVenue = new Map();
+  for (const e of events) {
+    if (!e.venueName || e.category === 'other') continue;
+    const counts = byVenue.get(e.venueName) || {};
+    counts[e.category] = (counts[e.category] || 0) + 1;
+    byVenue.set(e.venueName, counts);
+  }
+  return events.map((e) => {
+    if (e.category !== 'other') return e;
+    const counts = byVenue.get(e.venueName);
+    if (!counts) return e;
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const [top, n] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return total >= 2 && n / total >= 0.75 ? { ...e, category: top } : e;
+  });
+};
+
 // Transform Ticketmaster event to standard format
 const transformTicketmasterEvent = (event) => {
   const venue = event._embedded?.venues?.[0];
@@ -208,19 +257,7 @@ const transformTicketmasterEvent = (event) => {
     || pickImage(venue?.images)
     || null;
 
-  // Map category
-  const segment = classification?.segment?.name?.toLowerCase() || '';
-  const genre = classification?.genre?.name?.toLowerCase() || '';
-  let category = 'other';
-  if (genre === 'comedy' || event.name?.toLowerCase().includes('comedy')) {
-    category = 'comedy';
-  } else if (segment === 'music') {
-    category = 'music';
-  } else if (segment === 'sports') {
-    category = 'sports';
-  } else if (segment === 'arts & theatre') {
-    category = 'arts';
-  }
+  const category = categorizeTicketmasterEvent(event, classification);
 
   return {
     id: event.id,

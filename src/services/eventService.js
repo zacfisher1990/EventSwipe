@@ -554,16 +554,14 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
     events = events.filter(event => !swipedIds.has(event.id));
   }
 
-  // Categories
+  // Categories: with specific categories picked, show only those. Events
+  // without a recognised category only appear when everything is selected.
   const selectedCategories = filters?.categories || [];
   const allCategoriesSelected = selectedCategories.length === 0 ||
                                  selectedCategories.length >= VALID_FILTER_CATEGORIES.length;
-  if (selectedCategories.length > 0 && !allCategoriesSelected) {
-    events = events.filter(event => {
-      const eventCategory = (event.category || '').toLowerCase();
-      if (!eventCategory || eventCategory === 'other') return true;
-      return selectedCategories.includes(eventCategory);
-    });
+  if (!allCategoriesSelected) {
+    events = events.filter(event =>
+      selectedCategories.includes((event.category || '').toLowerCase()));
   }
 
   events = groupMultiDateEvents(events);
