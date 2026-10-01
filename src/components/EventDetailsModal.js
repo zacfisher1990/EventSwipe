@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CommentsSection from './CommentsSection';
 import { useAuth } from '../context/AuthContext';
 import { eventDateText, ticketButtonLabel } from '../utils/eventDisplay';
+import { openTickets } from '../utils/openLink';
 import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -341,31 +342,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
 
   if (!event) return null;
 
-  const handleGetTickets = () => {
-    if (event.ticketUrl) {
-      Linking.openURL(event.ticketUrl);
-    } else if (event.source === 'ticketmaster') {
-      // Clean up the title for better search results
-      let searchTitle = event.title
-        .split(' - ')[0]
-        .split(' at ')[0]
-        .split(' @ ')[0]
-        .trim();
-      const searchQuery = encodeURIComponent(searchTitle);
-      Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
-    } else if (event.source === 'seatgeek') {
-      let searchTitle = event.title
-        .split(' - ')[0]
-        .split(' at ')[0]
-        .split(' @ ')[0]
-        .trim();
-      const searchQuery = encodeURIComponent(searchTitle);
-      Linking.openURL(`https://seatgeek.com/search?search=${searchQuery}`);
-    } else {
-      const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
-      Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
-    }
-  };
+  const handleGetTickets = () => openTickets(event);
 
   const handleGetDirections = () => {
     const address = event.address || event.location;

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { saveEvent, passEvent, undoPassEvent, undoSaveEvent } from '../services/eventService';
 import { useEventCache } from '../context/EventCacheContext';
@@ -7,6 +7,7 @@ import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import SaveFireworks from '../components/SaveFireworks';
+import { openTickets } from '../utils/openLink';
 import { submitReport } from '../services/reportService';
 import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
@@ -22,9 +23,8 @@ export default function HomeScreen() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [swiperKey, setSwiperKey] = useState(0);
   const [lastSwipe, setLastSwipe] = useState(null); // { direction, event }
-  const { user, requireAccount } = useAuth();
+  const { user } = useAuth();
   const swiperRef = useRef(null);
-  const guestPromptShown = useRef(false);
   const fireworksRef = useRef(null);
   const summaryPrinted = useRef(false);
 
@@ -72,14 +72,9 @@ export default function HomeScreen() {
       const result = await saveEvent(user.uid, eventToSave);
       if (result.success) {
         console.log('Event saved successfully!');
-        // Guests: after their first save, offer an account so saves aren't lost
-        if (user.isAnonymous && !guestPromptShown.current) {
-          guestPromptShown.current = true;
-          setTimeout(() => requireAccount('save'), 400);
-        } else {
-          // Offered once ever, on a save that isn't already showing a prompt
-          setTimeout(() => maybeOfferNotifications(user.uid), 400);
-        }
+        // Saving never asks for an account (only posting and commenting do).
+        // Notifications are offered once ever, after a save.
+        setTimeout(() => maybeOfferNotifications(user.uid), 400);
       } else {
         console.error('Failed to save event:', result.error);
       }
@@ -147,30 +142,7 @@ export default function HomeScreen() {
       perfMarkAfterPaint('paint:first-card');
     }
 
-    const handleTicketPress = () => {
-      if (event.ticketUrl) {
-        Linking.openURL(event.ticketUrl);
-      } else if (event.source === 'ticketmaster') {
-        let searchTitle = event.title
-          .split(' - ')[0]
-          .split(' at ')[0]
-          .split(' @ ')[0]
-          .trim();
-        const searchQuery = encodeURIComponent(searchTitle);
-        Linking.openURL(`https://www.ticketmaster.com/search?q=${searchQuery}`);
-      } else if (event.source === 'seatgeek') {
-        let searchTitle = event.title
-          .split(' - ')[0]
-          .split(' at ')[0]
-          .split(' @ ')[0]
-          .trim();
-        const searchQuery = encodeURIComponent(searchTitle);
-        Linking.openURL(`https://seatgeek.com/search?search=${searchQuery}`);
-      } else {
-        const searchQuery = encodeURIComponent(`${event.title} ${event.city || ''} tickets`);
-        Linking.openURL(`https://www.google.com/search?q=${searchQuery}`);
-      }
-    };
+    const handleTicketPress = () => openTickets(event);
     
     return (
       <View style={styles.card}>
