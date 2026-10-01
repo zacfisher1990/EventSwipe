@@ -509,7 +509,7 @@ const sortByDate = (events) => {
   });
 };
 
-// Filters run before dedupe/grouping so those only see nearby, unswiped events.
+// Distance and date filters run first so dedupe only compares nearby, in-range events.
 const processEvents = (rawEvents, location, filters, swipedIds) => {
   let events = rawEvents;
 
@@ -534,6 +534,21 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
     });
   }
 
+  // Time range
+  if (filters?.timeRange) {
+    const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
+    events = events.filter(event => {
+      if (!event.date) return false;
+      const eventDate = parseEventDate(event.date);
+      return !!eventDate && eventDate >= startDate && eventDate <= endDate;
+    });
+  }
+
+  // Dedupe before the swiped/category filters: if the kept copy of a duplicate
+  // (e.g. Ticketmaster's) was swiped or filtered out, the other source's copy
+  // must not resurface as a "new" event.
+  events = deduplicateEvents(events);
+
   // Already swiped
   if (swipedIds.size) {
     events = events.filter(event => !swipedIds.has(event.id));
@@ -551,17 +566,6 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
     });
   }
 
-  // Time range
-  if (filters?.timeRange) {
-    const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
-    events = events.filter(event => {
-      if (!event.date) return false;
-      const eventDate = parseEventDate(event.date);
-      return !!eventDate && eventDate >= startDate && eventDate <= endDate;
-    });
-  }
-
-  events = deduplicateEvents(events);
   events = groupMultiDateEvents(events);
   return sortByDate(events);
 };

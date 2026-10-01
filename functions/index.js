@@ -172,20 +172,41 @@ const fetchTicketmaster = async (lat, lng, radius) => {
   }
 };
 
+// Ticketmaster fills events that have no artwork with generic stock images
+// (served from /dam/c/, e.g. the grey swirl) — never use those.
+const isGenericImage = (url) => {
+  if (!url) return true;
+  const lower = url.toLowerCase();
+  return [
+    '/dam/c/', 'recomendation', 'recommendation', 'default_event', 'no_image',
+    'placeholder', 'generic', 'ic_default', 'artist_default', 'event_default',
+  ].some(pattern => lower.includes(pattern));
+};
+
+// Best real image from a Ticketmaster images array: large 16:9 first
+const pickImage = (images) => {
+  const real = (images || []).filter(img => !isGenericImage(img.url));
+  const best = real.find(img => img.ratio === '16_9' && img.width > 500)
+    || real.find(img => img.ratio === '16_9')
+    || real.find(img => img.width > 500)
+    || real[0];
+  return best?.url || null;
+};
+
 // Transform Ticketmaster event to standard format
 const transformTicketmasterEvent = (event) => {
   const venue = event._embedded?.venues?.[0];
   const priceRange = event.priceRanges?.[0];
   const classification = event.classifications?.[0];
 
-  // Get best image
-  let image = null;
-  if (event.images?.length > 0) {
-    const best = event.images.find(img => img.ratio === '16_9' && img.width > 500)
-      || event.images.find(img => img.ratio === '16_9')
-      || event.images[0];
-    image = best?.url;
-  }
+  // Event artwork, else the artist/team's, else the venue's. null if only
+  // Ticketmaster's generic stock images exist — the app then shows its own
+  // category photo.
+  const attractions = event._embedded?.attractions || [];
+  const image = pickImage(event.images)
+    || attractions.map(a => pickImage(a.images)).find(Boolean)
+    || pickImage(venue?.images)
+    || null;
 
   // Map category
   const segment = classification?.segment?.name?.toLowerCase() || '';
