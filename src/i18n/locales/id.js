@@ -250,6 +250,8 @@ export default {
     and: 'dan',
     privacyPolicy: 'Kebijakan Privasi',
     notNow: "Nanti saja",
+    continueWithGoogle: "Lanjutkan dengan Google",
+    or: "atau",
     guestPrompt: {
       save: "Buat akun gratis agar acara yang kamu simpan tidak hilang.",
       post: "Buat akun gratis untuk memposting acaramu sendiri.",

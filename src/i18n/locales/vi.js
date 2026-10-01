@@ -250,6 +250,8 @@ export default {
     and: 'và',
     privacyPolicy: 'Chính sách bảo mật',
     notNow: "Để sau",
+    continueWithGoogle: "Tiếp tục với Google",
+    or: "hoặc",
     guestPrompt: {
       save: "Tạo tài khoản miễn phí để không mất các sự kiện đã lưu.",
       post: "Tạo tài khoản miễn phí để đăng sự kiện của riêng bạn.",

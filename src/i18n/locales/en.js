@@ -250,6 +250,8 @@ export default {
     and: 'and',
     privacyPolicy: 'Privacy Policy',
     notNow: "Not now",
+    continueWithGoogle: "Continue with Google",
+    or: "or",
     guestPrompt: {
       save: "Create a free account so you don't lose your saved events.",
       post: "Create a free account to post your own events.",

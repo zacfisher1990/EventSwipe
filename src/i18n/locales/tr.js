@@ -250,6 +250,8 @@ export default {
     and: 've',
     privacyPolicy: 'Gizlilik Politikası',
     notNow: "Şimdi değil",
+    continueWithGoogle: "Google ile devam et",
+    or: "veya",
     guestPrompt: {
       save: "Kaydettiğin etkinlikleri kaybetmemek için ücretsiz bir hesap oluştur.",
       post: "Kendi etkinliklerini paylaşmak için ücretsiz bir hesap oluştur.",

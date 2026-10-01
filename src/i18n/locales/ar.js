@@ -250,6 +250,8 @@ export default {
     and: 'و',
     privacyPolicy: 'سياسة الخصوصية',
     notNow: "ليس الآن",
+    continueWithGoogle: "المتابعة باستخدام Google",
+    or: "أو",
     guestPrompt: {
       save: "أنشئ حسابًا مجانيًا حتى لا تفقد فعالياتك المحفوظة.",
       post: "أنشئ حسابًا مجانيًا لنشر فعالياتك الخاصة.",

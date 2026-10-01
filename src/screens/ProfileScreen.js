@@ -23,7 +23,7 @@ import i18n from '../i18n';
 import { isEnabled, hasPermission, enableNotifications, disableNotifications } from '../services/notificationService';
 
 export default function ProfileScreen() {
-  const { user, signOut, requireAccount } = useAuth();
+  const { user, signOut, requireAccount, reauthenticateForDeletion } = useAuth();
   const isGuest = !!user?.isAnonymous;
   const [stats, setStats] = useState({ saved: 0, swiped: 0 });
   const [loading, setLoading] = useState(false);
@@ -116,6 +116,12 @@ export default function ProfileScreen() {
     const doDelete = async () => {
       setLoading(true);
       try {
+        // Apple/Google accounts confirm with the provider first
+        if (!(await reauthenticateForDeletion())) {
+          setLoading(false);
+          return;
+        }
+
         // Delete user data from Firestore
         const userRef = doc(db, 'users', user.uid);
         await deleteDoc(userRef);

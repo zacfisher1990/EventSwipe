@@ -11,7 +11,11 @@ import {
   Animated,
   Dimensions,
   Linking,
+  ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { appleSignInAvailable, googleSignInAvailable } from '../services/socialAuth';
 import { useAuth } from '../context/AuthContext';
 import i18n from '../i18n';
 
@@ -173,7 +177,7 @@ export default function AuthModal({ reason = null, initialMode = 'login', onClos
   const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithApple, signInWithGoogle } = useAuth();
 
   // Animation values
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -282,6 +286,18 @@ export default function AuthModal({ reason = null, initialMode = 'login', onClos
     setLoading(false);
   };
 
+  const handleProviderSignIn = async (providerSignIn) => {
+    if (loading) return;
+    setError('');
+    setLoading(true);
+    const result = await providerSignIn();
+    setLoading(false);
+    if (!result.success && !result.cancelled) {
+      setError(result.error);
+      triggerShake();
+    }
+  };
+
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setError('');
@@ -337,7 +353,12 @@ export default function AuthModal({ reason = null, initialMode = 'login', onClos
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           {/* Animated logo */}
           <Animated.View
             style={[
@@ -380,6 +401,36 @@ export default function AuthModal({ reason = null, initialMode = 'login', onClos
                 ? i18n.t(`auth.guestPrompt.${reason}`)
                 : isLogin ? i18n.t('auth.readyForAdventure') : i18n.t('auth.joinTheFun')}
             </Text>
+
+            {(appleSignInAvailable || googleSignInAvailable) && (
+              <View style={styles.socialButtons}>
+                {appleSignInAvailable && (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={12}
+                    style={styles.appleButton}
+                    onPress={() => handleProviderSignIn(signInWithApple)}
+                  />
+                )}
+                {googleSignInAvailable && (
+                  <TouchableOpacity
+                    style={styles.googleButton}
+                    onPress={() => handleProviderSignIn(signInWithGoogle)}
+                    disabled={loading}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="logo-google" size={18} color="#4285F4" />
+                    <Text style={styles.googleButtonText}>{i18n.t('auth.continueWithGoogle')}</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>{i18n.t('auth.or')}</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              </View>
+            )}
 
             <View
               style={[
@@ -501,7 +552,7 @@ export default function AuthModal({ reason = null, initialMode = 'login', onClos
               </Text>
             </View>
           </Animated.View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {onClose && (
@@ -550,9 +601,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   logoContainer: {
     alignItems: 'center',
@@ -664,6 +716,45 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  socialButtons: {
+    gap: 10,
+    marginBottom: 4,
+  },
+  appleButton: {
+    height: 50,
+    width: '100%',
+  },
+  googleButton: {
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dadce0',
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#3c4043',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 6,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#eee',
+  },
+  dividerText: {
+    fontSize: 13,
+    color: '#999',
   },
   toggleButton: {
     marginTop: 20,

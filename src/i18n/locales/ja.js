@@ -250,6 +250,8 @@ export default {
     and: 'および',
     privacyPolicy: 'プライバシーポリシー',
     notNow: "今はしない",
+    continueWithGoogle: "Googleで続ける",
+    or: "または",
     guestPrompt: {
       save: "無料アカウントを作成して、保存したイベントを失わないようにしましょう。",
       post: "無料アカウントを作成して、自分のイベントを投稿しましょう。",

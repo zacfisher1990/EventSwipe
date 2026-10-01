@@ -250,6 +250,8 @@ export default {
     and: 'i',
     privacyPolicy: 'Politykę prywatności',
     notNow: "Nie teraz",
+    continueWithGoogle: "Kontynuuj z Google",
+    or: "lub",
     guestPrompt: {
       save: "Załóż darmowe konto, aby nie stracić zapisanych wydarzeń.",
       post: "Załóż darmowe konto, aby publikować własne wydarzenia.",

@@ -16,6 +16,7 @@ export default {
       supportsTablet: false,
       bundleIdentifier: "com.eventswipeapp.eventswipe",
       buildNumber: "21",
+      usesAppleSignIn: true,
       entitlements: {
         "aps-environment": "development"
       },
@@ -59,6 +60,7 @@ export default {
       }],
       "@react-native-community/datetimepicker",
       "expo-localization",
+      "expo-apple-authentication",
       ["expo-notifications", {
         color: "#4ECDC4"
       }]

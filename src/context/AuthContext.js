@@ -8,13 +8,18 @@ import {
   signInAnonymously,
   linkWithCredential,
   EmailAuthProvider,
-  deleteUser,
+  OAuthProvider,
+  GoogleAuthProvider,
+  signInWithCredential,
+  reauthenticateWithCredential,
+  revokeAccessToken,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import i18n from '../i18n';
 import { perfMark } from '../utils/perf';
 import { syncNotifications, detachDevice } from '../services/notificationService';
+import { getAppleCredential, getGoogleCredential, signOutGoogle } from '../services/socialAuth';
 
 // Map Firebase error codes to translated messages
 const getAuthErrorMessage = (error) => {
@@ -34,6 +39,34 @@ const getAuthErrorMessage = (error) => {
 };
 
 const AuthContext = createContext({});
+
+// Remove a guest account that's been merged into a real one. Must NOT use
+// deleteUser(guest): the SDK's delete ends with auth.signOut(), which would
+// sign out the account the user just signed in to. The REST call deletes only
+// the account the token belongs to; the onUserDeleted Cloud Function then
+// removes its users doc.
+const deleteGuestAccount = async (guestIdToken) => {
+  if (!guestIdToken) return;
+  try {
+    await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${auth.app.options.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: guestIdToken }),
+    });
+  } catch {
+    // Best effort — an orphaned guest account is harmless
+  }
+};
+
+// Snapshot a guest's data and token before switching to another account
+const captureGuest = async () => {
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  if (!guest) return null;
+  return {
+    data: (await getDoc(doc(db, 'users', guest.uid)).catch(() => null))?.data(),
+    idToken: await guest.getIdToken().catch(() => null),
+  };
+};
 
 // Carry a guest's saves/swipes into the account they just signed in to.
 const mergeGuestData = async (uid, guestData) => {
@@ -90,6 +123,8 @@ export const AuthProvider = ({ children }) => {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           isAnonymous: firebaseUser.isAnonymous,
+          // 'password' | 'apple.com' | 'google.com' (undefined for guests)
+          providerId: firebaseUser.providerData[0]?.providerId,
           ...userDoc.data(),
         });
         // For the admin dashboard; fire and forget
@@ -119,23 +154,92 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     try {
-      const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
-      const guestData = guest
-        ? (await getDoc(doc(db, 'users', guest.uid)).catch(() => null))?.data()
-        : null;
+      const guest = await captureGuest();
 
       const result = await signInWithEmailAndPassword(auth, email, password);
 
       if (guest) {
-        await mergeGuestData(result.user.uid, guestData).catch(e => console.log('Guest merge failed:', e));
-        // The deleteUser Cloud Function trigger removes the guest's users doc
-        deleteUser(guest).catch(() => {});
+        await mergeGuestData(result.user.uid, guest.data).catch(e => console.log('Guest merge failed:', e));
+        deleteGuestAccount(guest.idToken);
       }
       setAuthPrompt(null);
       return { success: true };
     } catch (error) {
       return { success: false, error: getAuthErrorMessage(error) };
     }
+  };
+
+  // Finish an Apple/Google sign-in. A guest is upgraded in place (same uid, so
+  // swipes and saves carry over). If that Apple/Google identity already has an
+  // EventSwipe account, sign in to it and merge the guest's data instead.
+  const completeProviderSignIn = async (credential) => {
+    const current = auth.currentUser;
+    if (!current?.isAnonymous) {
+      await signInWithCredential(auth, credential);
+      return;
+    }
+
+    try {
+      const result = await linkWithCredential(current, credential);
+      // Refresh the token so security rules stop seeing an anonymous sign-in
+      await result.user.getIdToken(true);
+      if (result.user.email) {
+        await setDoc(doc(db, 'users', result.user.uid), { email: result.user.email }, { merge: true });
+      }
+      // Linking doesn't fire onAuthStateChanged
+      setUser(prev => ({
+        ...prev,
+        email: result.user.email,
+        isAnonymous: false,
+        providerId: credential.providerId,
+      }));
+    } catch (error) {
+      if (error.code !== 'auth/credential-already-in-use' && error.code !== 'auth/email-already-in-use') {
+        throw error;
+      }
+      // Apple tokens are single-use: the error carries a fresh credential
+      const existing = OAuthProvider.credentialFromError(error)
+        || GoogleAuthProvider.credentialFromError(error)
+        || credential;
+      const guest = await captureGuest();
+      const result = await signInWithCredential(auth, existing);
+      await mergeGuestData(result.user.uid, guest?.data).catch(e => console.log('Guest merge failed:', e));
+      deleteGuestAccount(guest?.idToken);
+    }
+  };
+
+  const signInWithProvider = async (getCredential) => {
+    try {
+      const result = await getCredential();
+      if (!result) return { success: false, cancelled: true };
+      await completeProviderSignIn(result.credential);
+      setAuthPrompt(null);
+      return { success: true };
+    } catch (error) {
+      console.error('Provider sign-in failed:', error?.code, error?.message);
+      return { success: false, error: getAuthErrorMessage(error) };
+    }
+  };
+
+  /**
+   * Deleting an account needs a recent sign-in. For Apple/Google accounts,
+   * re-confirm with the provider first; Apple also requires its token to be
+   * revoked when the account is deleted. Returns false if the user cancels.
+   */
+  const reauthenticateForDeletion = async () => {
+    const current = auth.currentUser;
+    const providerId = current?.providerData[0]?.providerId;
+    if (providerId !== 'apple.com' && providerId !== 'google.com') return true;
+
+    const result = await (providerId === 'apple.com' ? getAppleCredential() : getGoogleCredential());
+    if (!result) return false;
+    await reauthenticateWithCredential(current, result.credential);
+    if (result.authorizationCode) {
+      // Needs the Apple key configured on the Firebase Apple provider
+      await revokeAccessToken(auth, result.authorizationCode)
+        .catch(e => console.warn('Apple token revocation failed:', e?.code));
+    }
+    return true;
   };
 
   const signUp = async (email, password) => {
@@ -170,6 +274,7 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     try {
       await detachDevice(auth.currentUser?.uid);
+      await signOutGoogle();
       await firebaseSignOut(auth);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -183,6 +288,9 @@ export const AuthProvider = ({ children }) => {
       guestUnavailable,
       signIn,
       signUp,
+      signInWithApple: () => signInWithProvider(getAppleCredential),
+      signInWithGoogle: () => signInWithProvider(getGoogleCredential),
+      reauthenticateForDeletion,
       signOut,
       authPrompt,
       // reason: 'save' | 'post' | null; mode: 'signup' | 'login'

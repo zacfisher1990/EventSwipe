@@ -250,6 +250,8 @@ export default {
     and: '및',
     privacyPolicy: '개인정보 처리방침',
     notNow: "나중에",
+    continueWithGoogle: "Google로 계속하기",
+    or: "또는",
     guestPrompt: {
       save: "저장한 이벤트를 잃지 않도록 무료 계정을 만드세요.",
       post: "나만의 이벤트를 올리려면 무료 계정을 만드세요.",

@@ -250,6 +250,8 @@ export default {
     and: '和',
     privacyPolicy: '隱私權政策',
     notNow: "暫不",
+    continueWithGoogle: "使用 Google 帳戶繼續",
+    or: "或",
     guestPrompt: {
       save: "建立免費帳戶，以免遺失已儲存的活動。",
       post: "建立免費帳戶即可發佈你自己的活動。",

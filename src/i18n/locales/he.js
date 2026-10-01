@@ -250,6 +250,8 @@ export default {
     and: 'ו',
     privacyPolicy: 'מדיניות הפרטיות',
     notNow: "לא עכשיו",
+    continueWithGoogle: "המשך עם Google",
+    or: "או",
     guestPrompt: {
       save: "צרו חשבון חינם כדי לא לאבד את האירועים ששמרתם.",
       post: "צרו חשבון חינם כדי לפרסם אירועים משלכם.",
