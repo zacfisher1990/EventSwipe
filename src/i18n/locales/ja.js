@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'セキュリティのため、一度ログアウトしてから再度ログインし、アカウント削除をお試しください。',
     reAuthRequiredTitle: '再認証が必要です',
     signOutConfirm: 'ログアウトしてもよろしいですか？',
-    version: 'EventSwipe v1.0.0',
     guest: "ゲスト",
     guestText: "アカウントを作成すると、保存したイベントを残したり、自分のイベントを投稿したりできます。",
   },

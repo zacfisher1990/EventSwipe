@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Pour des raisons de sécurité, déconnecte-toi puis reconnecte-toi, et réessaie de supprimer ton compte.',
     reAuthRequiredTitle: 'Reconnexion requise',
     signOutConfirm: 'Es-tu sûr de vouloir te déconnecter ?',
-    version: 'EventSwipe v1.0.0',
     guest: "Invité",
     guestText: "Crée un compte pour garder tes événements enregistrés et publier les tiens.",
   },

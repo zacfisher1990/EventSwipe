@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Untuk keamanan, silakan keluar dan masuk kembali, lalu coba hapus akunmu lagi.',
     reAuthRequiredTitle: 'Perlu Login Ulang',
     signOutConfirm: 'Yakin ingin keluar?',
-    version: 'EventSwipe v1.0.0',
     guest: "Tamu",
     guestText: "Buat akun untuk menyimpan acara favoritmu dan memposting acaramu sendiri.",
   },

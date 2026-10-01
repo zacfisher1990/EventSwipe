@@ -150,7 +150,6 @@ export default {
     reAuthRequired: '보안을 위해 로그아웃 후 다시 로그인한 다음 계정 삭제를 시도해 주세요.',
     reAuthRequiredTitle: '재인증 필요',
     signOutConfirm: '정말로 로그아웃하시겠습니까?',
-    version: 'EventSwipe v1.0.0',
     guest: "게스트",
     guestText: "계정을 만들면 저장한 이벤트를 보관하고 나만의 이벤트를 올릴 수 있어요.",
   },

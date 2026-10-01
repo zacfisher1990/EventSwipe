@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Aus Sicherheitsgründen melde dich bitte ab und wieder an, dann versuche erneut, dein Konto zu löschen.',
     reAuthRequiredTitle: 'Erneute Anmeldung erforderlich',
     signOutConfirm: 'Bist du sicher, dass du dich abmelden möchtest?',
-    version: 'EventSwipe v1.0.0',
     guest: "Gast",
     guestText: "Erstelle ein Konto, um deine gespeicherten Events zu behalten und eigene zu veröffentlichen.",
   },

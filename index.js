@@ -1,4 +1,6 @@
-// Imported first so its T0 is captured before the app module graph evaluates.
+// Imported first so release builds are quiet before anything else evaluates.
+import './src/utils/quietLogs';
+// Imported next so its T0 is captured before the app module graph evaluates.
 import { perfMark } from './src/utils/perf';
 
 import { registerRootComponent } from 'expo';

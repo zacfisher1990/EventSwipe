@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Güvenlik nedeniyle, lütfen çıkış yap ve tekrar giriş yap, ardından hesabını silmeyi tekrar dene.',
     reAuthRequiredTitle: 'Yeniden Kimlik Doğrulama Gerekli',
     signOutConfirm: 'Çıkış yapmak istediğinden emin misin?',
-    version: 'EventSwipe v1.0.0',
     guest: "Misafir",
     guestText: "Kaydettiğin etkinlikleri korumak ve kendi etkinliklerini paylaşmak için bir hesap oluştur.",
   },

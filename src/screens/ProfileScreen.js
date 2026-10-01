@@ -18,6 +18,7 @@ import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import * as Application from 'expo-application';
 import i18n from '../i18n';
 import { isEnabled, hasPermission, enableNotifications, disableNotifications } from '../services/notificationService';
 
@@ -303,7 +304,11 @@ export default function ProfileScreen() {
         )}
 
         {/* App Version */}
-        <Text style={styles.version}>{i18n.t('profile.version')}</Text>
+        {Application.nativeApplicationVersion && (
+          <Text style={styles.version}>
+            EventSwipe v{Application.nativeApplicationVersion} ({Application.nativeBuildVersion})
+          </Text>
+        )}
       </ScrollView>
     </View>
   );

@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Ze względów bezpieczeństwa wyloguj się i zaloguj ponownie, a następnie spróbuj usunąć konto.',
     reAuthRequiredTitle: 'Wymagane ponowne logowanie',
     signOutConfirm: 'Czy na pewno chcesz się wylogować?',
-    version: 'EventSwipe v1.0.0',
     guest: "Gość",
     guestText: "Załóż konto, aby zachować zapisane wydarzenia i publikować własne.",
   },

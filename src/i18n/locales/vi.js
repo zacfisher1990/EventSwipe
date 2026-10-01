@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Để bảo mật, vui lòng đăng xuất và đăng nhập lại, sau đó thử xóa tài khoản.',
     reAuthRequiredTitle: 'Cần xác thực lại',
     signOutConfirm: 'Bạn có chắc chắn muốn đăng xuất?',
-    version: 'EventSwipe v1.0.0',
     guest: "Khách",
     guestText: "Tạo tài khoản để giữ các sự kiện đã lưu và đăng sự kiện của riêng bạn.",
   },

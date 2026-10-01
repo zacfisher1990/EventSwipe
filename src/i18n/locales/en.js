@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'For security, please sign out and sign back in, then try deleting your account again.',
     reAuthRequiredTitle: 'Re-authentication Required',
     signOutConfirm: 'Are you sure you want to sign out?',
-    version: 'EventSwipe v1.0.0',
     guest: "Guest",
     guestText: "Create an account to keep your saved events and post your own.",
   },

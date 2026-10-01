@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'Per sicurezza, esci e accedi di nuovo, poi riprova a eliminare il tuo account.',
     reAuthRequiredTitle: 'Nuova autenticazione richiesta',
     signOutConfirm: 'Sei sicuro di voler uscire?',
-    version: 'EventSwipe v1.0.0',
     guest: "Ospite",
     guestText: "Crea un account per conservare gli eventi salvati e pubblicare i tuoi.",
   },

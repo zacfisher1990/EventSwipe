@@ -28,6 +28,7 @@ let lastAt = T0;
 const fmt = (ms) => `${ms.toFixed(1)}ms`;
 
 export const perfMark = (name, detail, { repeat = false } = {}) => {
+  if (!__DEV__) return 0;
   if (!repeat && marks.has(name)) return marks.get(name).at;
 
   const at = nowMs();
@@ -67,6 +68,7 @@ export const perfMarkAfterPaint = (name, detail) => {
 
 /** Dump the whole timeline as one table. Call once the first card is on screen. */
 export const perfSummary = (label = 'cold start') => {
+  if (!__DEV__) return;
   const lines = order.map((name) => {
     const { sinceStart, sincePrev, detail } = marks.get(name);
     return (

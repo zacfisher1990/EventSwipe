@@ -150,7 +150,6 @@ export default {
     reAuthRequired: 'מטעמי אבטחה, נא להתנתק ולהתחבר מחדש, ואז לנסות למחוק את החשבון שוב.',
     reAuthRequiredTitle: 'נדרש אימות מחדש',
     signOutConfirm: 'האם אתה בטוח שברצונך להתנתק?',
-    version: 'EventSwipe v1.0.0',
     guest: "אורח",
     guestText: "צרו חשבון כדי לשמור את האירועים שלכם ולפרסם אירועים משלכם.",
   },

@@ -150,7 +150,6 @@ export default {
     reAuthRequired: '為了安全起見，請先登出再重新登入，然後再嘗試刪除帳戶。',
     reAuthRequiredTitle: '需要重新驗證',
     signOutConfirm: '你確定要登出嗎？',
-    version: 'EventSwipe v1.0.0',
     guest: "訪客",
     guestText: "建立帳戶即可保留已儲存的活動並發佈你自己的活動。",
   },
