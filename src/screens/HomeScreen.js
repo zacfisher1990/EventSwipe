@@ -6,6 +6,7 @@ import { useEventCache } from '../context/EventCacheContext';
 import FilterModal from '../components/FilterModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
+import SaveFireworks from '../components/SaveFireworks';
 import { submitReport } from '../services/reportService';
 import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
@@ -23,6 +24,7 @@ export default function HomeScreen() {
   const { user, requireAccount } = useAuth();
   const swiperRef = useRef(null);
   const guestPromptShown = useRef(false);
+  const fireworksRef = useRef(null);
   const summaryPrinted = useRef(false);
 
   // Reset the swiper deck whenever a new batch of events arrives
@@ -53,6 +55,7 @@ export default function HomeScreen() {
 
   const onSwipedRight = async (index, event) => {
     console.log('Saving:', event?.title);
+    fireworksRef.current?.fire();
     if (event) markSwiped(event);
     prefetchAhead(index);
     setLastSwipe({ direction: 'right', event });
@@ -297,6 +300,9 @@ export default function HomeScreen() {
           <Text style={styles.undoButtonText}>↩ Undo</Text>
         </TouchableOpacity>
       )}
+
+      {/* Celebration when an event is saved (swipe right) */}
+      <SaveFireworks ref={fireworksRef} />
 
       <FilterModal
         visible={showFilters}
