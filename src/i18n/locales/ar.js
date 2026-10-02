@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
     guest: "زائر",
     guestText: "أنشئ حسابًا للاحتفاظ بفعالياتك المحفوظة ونشر فعالياتك الخاصة.",
+    signedInWithApple: "تم تسجيل الدخول عبر Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "لن ترى تعليقات %{name} بعد الآن.",
     deleteConfirm: "هل تريد حذف هذا التعليق؟",
     justNow: "الآن",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "يتوفر تحديث",
+    availableBody: "إصدار جديد من EventSwipe جاهز.",
+    button: "تحديث",
+    requiredTitle: "التحديث مطلوب",
+    requiredBody: "يُرجى تحديث EventSwipe لمواصلة استخدام التطبيق.",
   },
 
   // Notifications

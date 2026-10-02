@@ -25,6 +25,12 @@ import { isEnabled, hasPermission, enableNotifications, disableNotifications } f
 export default function ProfileScreen() {
   const { user, signOut, requireAccount, reauthenticateForDeletion } = useAuth();
   const isGuest = !!user?.isAnonymous;
+  // "Hide My Email" gives the app a random Apple relay address — never show it
+  const hasRelayEmail = /@privaterelay\.appleid\.com$/i.test(user?.email || '');
+  const accountLine = hasRelayEmail || (!user?.email && user?.providerId === 'apple.com')
+    ? i18n.t('profile.signedInWithApple')
+    : user?.email;
+  const avatarLetter = (user?.displayName || (hasRelayEmail ? '' : user?.email) || '').charAt(0).toUpperCase();
   const [stats, setStats] = useState({ saved: 0, swiped: 0 });
   const [loading, setLoading] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(false);
@@ -200,12 +206,10 @@ export default function ProfileScreen() {
         {/* User Info */}
         <View style={styles.userCard}>
           <View style={styles.avatar}>
-            {isGuest ? (
+            {isGuest || !avatarLetter ? (
               <Ionicons name="person" size={36} color="#fff" />
             ) : (
-              <Text style={styles.avatarText}>
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </Text>
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
             )}
           </View>
           {isGuest ? (
@@ -222,7 +226,10 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.email}>{user?.email}</Text>
+            <>
+              {user?.displayName ? <Text style={styles.displayName}>{user.displayName}</Text> : null}
+              <Text style={styles.email}>{accountLine}</Text>
+            </>
           )}
           
           {/* Stats */}
@@ -371,6 +378,12 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  displayName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
   },
   email: {
     fontSize: 16,

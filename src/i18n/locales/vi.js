@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'Bạn có chắc chắn muốn đăng xuất?',
     guest: "Khách",
     guestText: "Tạo tài khoản để giữ các sự kiện đã lưu và đăng sự kiện của riêng bạn.",
+    signedInWithApple: "Đã đăng nhập bằng Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "Bạn sẽ không còn thấy bình luận từ %{name}.",
     deleteConfirm: "Xóa bình luận này?",
     justNow: "Vừa xong",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "Có bản cập nhật",
+    availableBody: "Phiên bản mới của EventSwipe đã sẵn sàng.",
+    button: "Cập nhật",
+    requiredTitle: "Cần cập nhật",
+    requiredBody: "Vui lòng cập nhật EventSwipe để tiếp tục sử dụng ứng dụng.",
   },
 
   // Notifications

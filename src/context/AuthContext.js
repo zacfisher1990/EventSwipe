@@ -8,13 +8,11 @@ import {
   signInAnonymously,
   linkWithCredential,
   EmailAuthProvider,
-  OAuthProvider,
-  GoogleAuthProvider,
   signInWithCredential,
   reauthenticateWithCredential,
   revokeAccessToken,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import i18n from '../i18n';
 import { perfMark } from '../utils/perf';
@@ -72,20 +70,23 @@ const captureGuest = async () => {
 const mergeGuestData = async (uid, guestData) => {
   const saved = guestData?.savedEvents || [];
   const swiped = guestData?.swipedEvents || [];
-  if (!saved.length && !swiped.length) return;
+  const blocked = guestData?.blockedUsers || [];
+  if (!saved.length && !swiped.length && !blocked.length) return;
 
   const ref = doc(db, 'users', uid);
   const existing = (await getDoc(ref)).data()?.savedEvents || [];
   const existingIds = new Set(existing.map(e => e.id));
   const newSaved = saved.filter(e => !existingIds.has(e.id));
 
-  await updateDoc(ref, {
+  // setDoc+merge (not updateDoc): a brand-new account's doc may not exist yet
+  await setDoc(ref, {
     ...(newSaved.length && { savedEvents: arrayUnion(...newSaved) }),
     ...(swiped.length && { swipedEvents: arrayUnion(...swiped) }),
+    ...(blocked.length && { blockedUsers: arrayUnion(...blocked) }),
     swipeCount: increment(guestData.swipeCount || 0),
     rightSwipes: increment(guestData.rightSwipes || 0),
     leftSwipes: increment(guestData.leftSwipes || 0),
-  });
+  }, { merge: true });
 };
 
 export const AuthProvider = ({ children }) => {
@@ -111,10 +112,11 @@ export const AuthProvider = ({ children }) => {
         const userDoc = await getDoc(userRef);
         perfMark('auth:userdoc-response-received', { exists: userDoc.exists() });
         if (!userDoc.exists()) {
-          // New guests need a doc before their first swipe (swipes use updateDoc)
+          // New users need a doc before their first swipe (swipes use updateDoc).
+          // Only identity fields: a guest's saves may be merging into this doc
+          // at the same moment, and writing savedEvents here could wipe them.
           await setDoc(userRef, {
             createdAt: new Date().toISOString(),
-            savedEvents: [],
             ...(firebaseUser.email && { email: firebaseUser.email }),
           }, { merge: true }).catch(() => {});
         }
@@ -169,42 +171,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Finish an Apple/Google sign-in. A guest is upgraded in place (same uid, so
-  // swipes and saves carry over). If that Apple/Google identity already has an
-  // EventSwipe account, sign in to it and merge the guest's data instead.
+  // Finish an Apple/Google sign-in. The credential is used exactly once: Apple
+  // tokens are single-use, so "try to link, then sign in with the same token"
+  // fails for anyone whose Apple ID already has an account. Signing in directly
+  // lands in the existing account or creates one; a guest's data is then moved
+  // across and the leftover guest account removed.
   const completeProviderSignIn = async (credential) => {
-    const current = auth.currentUser;
-    if (!current?.isAnonymous) {
-      await signInWithCredential(auth, credential);
-      return;
-    }
-
-    try {
-      const result = await linkWithCredential(current, credential);
-      // Refresh the token so security rules stop seeing an anonymous sign-in
-      await result.user.getIdToken(true);
-      if (result.user.email) {
-        await setDoc(doc(db, 'users', result.user.uid), { email: result.user.email }, { merge: true });
-      }
-      // Linking doesn't fire onAuthStateChanged
-      setUser(prev => ({
-        ...prev,
-        email: result.user.email,
-        isAnonymous: false,
-        providerId: credential.providerId,
-      }));
-    } catch (error) {
-      if (error.code !== 'auth/credential-already-in-use' && error.code !== 'auth/email-already-in-use') {
-        throw error;
-      }
-      // Apple tokens are single-use: the error carries a fresh credential
-      const existing = OAuthProvider.credentialFromError(error)
-        || GoogleAuthProvider.credentialFromError(error)
-        || credential;
-      const guest = await captureGuest();
-      const result = await signInWithCredential(auth, existing);
-      await mergeGuestData(result.user.uid, guest?.data).catch(e => console.log('Guest merge failed:', e));
-      deleteGuestAccount(guest?.idToken);
+    const guest = await captureGuest();
+    const result = await signInWithCredential(auth, credential);
+    if (guest) {
+      await mergeGuestData(result.user.uid, guest.data).catch(e => console.log('Guest merge failed:', e));
+      deleteGuestAccount(guest.idToken);
     }
   };
 

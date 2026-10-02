@@ -23,6 +23,7 @@ import CommentsSection from './CommentsSection';
 import { useAuth } from '../context/AuthContext';
 import { eventDateText, ticketButtonLabel } from '../utils/eventDisplay';
 import { openTickets } from '../utils/openLink';
+import { APP_STORE_URL, PLAY_STORE_URL } from '../config/storeLinks';
 import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -38,10 +39,6 @@ const getReportReasons = () => [
 ];
 
 // Report Modal Component
-// Included in shared events so recipients can get the app
-const APP_STORE_URL = 'https://apps.apple.com/app/id6757116958';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.eventswipeapp.eventswipe';
-
 function ReportModal({ visible, onClose, onSubmit, eventTitle }) {
   const [selectedReason, setSelectedReason] = useState(null);
   const [otherText, setOtherText] = useState('');

@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'Yakin ingin keluar?',
     guest: "Tamu",
     guestText: "Buat akun untuk menyimpan acara favoritmu dan memposting acaramu sendiri.",
+    signedInWithApple: "Masuk dengan Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "Kamu tidak akan melihat komentar dari %{name} lagi.",
     deleteConfirm: "Hapus komentar ini?",
     justNow: "Baru saja",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "Pembaruan tersedia",
+    availableBody: "Versi baru EventSwipe sudah siap.",
+    button: "Perbarui",
+    requiredTitle: "Pembaruan diperlukan",
+    requiredBody: "Perbarui EventSwipe untuk terus menggunakan aplikasi.",
   },
 
   // Notifications

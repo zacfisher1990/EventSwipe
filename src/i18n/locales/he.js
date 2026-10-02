@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'האם אתה בטוח שברצונך להתנתק?',
     guest: "אורח",
     guestText: "צרו חשבון כדי לשמור את האירועים שלכם ולפרסם אירועים משלכם.",
+    signedInWithApple: "מחובר באמצעות Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "לא תראו יותר תגובות של %{name}.",
     deleteConfirm: "למחוק את התגובה הזו?",
     justNow: "ממש עכשיו",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "יש עדכון זמין",
+    availableBody: "גרסה חדשה של EventSwipe מוכנה.",
+    button: "עדכון",
+    requiredTitle: "נדרש עדכון",
+    requiredBody: "עדכנו את EventSwipe כדי להמשיך להשתמש באפליקציה.",
   },
 
   // Notifications

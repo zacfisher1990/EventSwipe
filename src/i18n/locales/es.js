@@ -154,6 +154,7 @@ export default {
     signOutConfirm: '¿Estás seguro de que quieres cerrar sesión?',
     guest: "Invitado",
     guestText: "Crea una cuenta para conservar tus eventos guardados y publicar los tuyos.",
+    signedInWithApple: "Sesión iniciada con Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "Ya no verás los comentarios de %{name}.",
     deleteConfirm: "¿Eliminar este comentario?",
     justNow: "Ahora mismo",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "Actualización disponible",
+    availableBody: "Hay una nueva versión de EventSwipe.",
+    button: "Actualizar",
+    requiredTitle: "Actualización necesaria",
+    requiredBody: "Actualiza EventSwipe para seguir usando la app.",
   },
 
   // Notifications

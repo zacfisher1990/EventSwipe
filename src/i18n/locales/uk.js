@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'Ти впевнений, що хочеш вийти?',
     guest: "Гість",
     guestText: "Створи акаунт, щоб зберегти вибрані події та публікувати власні.",
+    signedInWithApple: "Вхід виконано через Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "Ти більше не бачитимеш коментарі від %{name}.",
     deleteConfirm: "Видалити цей коментар?",
     justNow: "Щойно",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "Доступне оновлення",
+    availableBody: "Вийшла нова версія EventSwipe.",
+    button: "Оновити",
+    requiredTitle: "Потрібне оновлення",
+    requiredBody: "Онови EventSwipe, щоб і далі користуватися застосунком.",
   },
 
   // Notifications

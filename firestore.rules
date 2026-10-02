@@ -23,6 +23,12 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == resource.data.reporterId;
     }
 
+    // Remote app settings (e.g. the "update available" banner). Read-only for
+    // clients; written with scripts/update-banner.mjs.
+    match /config/{document} {
+      allow read: if true;
+    }
+
     // Comments on events. Anyone signed in (guests included) can read visible
     // comments; posting needs a real account. Clients can't edit comments or
     // touch the moderation fields - hiding is done by Cloud Functions / admin.

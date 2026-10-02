@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { EventCacheProvider } from './src/context/EventCacheContext';
 import AuthModal from './src/components/AuthModal';
+import UpdateBanner from './src/components/UpdateBanner';
 import TabNavigator from './src/navigation/TabNavigator';
 import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
 import { perfMark } from './src/utils/perf';
@@ -90,6 +91,7 @@ export default function App() {
       <StatusBar style="dark" />
       <AuthProvider>
         <AppContent />
+        <UpdateBanner />
       </AuthProvider>
     </SafeAreaProvider>
   );

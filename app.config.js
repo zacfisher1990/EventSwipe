@@ -1,8 +1,18 @@
+// The app version, and the OTA "runtime version": an over-the-air update only
+// goes to builds with the same runtime version, so JS updates never land on a
+// binary whose native code they weren't built for. Change it with
+// `node scripts/bump-version.mjs <version>`, which also updates the native files.
+const VERSION = "1.0.27";
+
 export default {
   expo: {
     name: "EventSwipe",
     slug: "EventSwipe",
-    version: "1.0.26",
+    version: VERSION,
+    runtimeVersion: VERSION,
+    updates: {
+      url: "https://u.expo.dev/cf67b665-3e15-4bd7-a8b9-a477c2f5711e"
+    },
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

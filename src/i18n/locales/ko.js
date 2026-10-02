@@ -154,6 +154,7 @@ export default {
     signOutConfirm: '정말로 로그아웃하시겠습니까?',
     guest: "게스트",
     guestText: "계정을 만들면 저장한 이벤트를 보관하고 나만의 이벤트를 올릴 수 있어요.",
+    signedInWithApple: "Apple로 로그인됨",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "%{name} 님의 댓글이 더 이상 표시되지 않아요.",
     deleteConfirm: "이 댓글을 삭제할까요?",
     justNow: "방금 전",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "업데이트 가능",
+    availableBody: "EventSwipe의 새 버전이 준비되었어요.",
+    button: "업데이트",
+    requiredTitle: "업데이트 필요",
+    requiredBody: "앱을 계속 사용하려면 EventSwipe를 업데이트해 주세요.",
   },
 
   // Notifications

@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?',
     guest: "ผู้เยี่ยมชม",
     guestText: "สร้างบัญชีเพื่อเก็บอีเวนต์ที่บันทึกไว้และโพสต์อีเวนต์ของคุณเอง",
+    signedInWithApple: "ลงชื่อเข้าใช้ด้วย Apple",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "คุณจะไม่เห็นความคิดเห็นจาก %{name} อีก",
     deleteConfirm: "ลบความคิดเห็นนี้ใช่ไหม",
     justNow: "เมื่อสักครู่",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "มีอัปเดตใหม่",
+    availableBody: "EventSwipe เวอร์ชันใหม่พร้อมแล้ว",
+    button: "อัปเดต",
+    requiredTitle: "จำเป็นต้องอัปเดต",
+    requiredBody: "โปรดอัปเดต EventSwipe เพื่อใช้งานแอปต่อ",
   },
 
   // Notifications

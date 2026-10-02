@@ -154,6 +154,7 @@ export default {
     signOutConfirm: '你确定要退出登录吗？',
     guest: "访客",
     guestText: "创建账户即可保留已保存的活动并发布你自己的活动。",
+    signedInWithApple: "已通过 Apple 登录",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "你将不再看到 %{name} 的评论。",
     deleteConfirm: "删除这条评论？",
     justNow: "刚刚",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "有可用更新",
+    availableBody: "EventSwipe 新版本已就绪。",
+    button: "更新",
+    requiredTitle: "需要更新",
+    requiredBody: "请更新 EventSwipe 以继续使用。",
   },
 
   // Notifications

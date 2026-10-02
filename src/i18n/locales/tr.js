@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'Çıkış yapmak istediğinden emin misin?',
     guest: "Misafir",
     guestText: "Kaydettiğin etkinlikleri korumak ve kendi etkinliklerini paylaşmak için bir hesap oluştur.",
+    signedInWithApple: "Apple ile giriş yapıldı",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "Artık %{name} adlı kullanıcının yorumlarını görmeyeceksin.",
     deleteConfirm: "Bu yorum silinsin mi?",
     justNow: "Az önce",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "Güncelleme mevcut",
+    availableBody: "EventSwipe'ın yeni bir sürümü hazır.",
+    button: "Güncelle",
+    requiredTitle: "Güncelleme gerekli",
+    requiredBody: "Uygulamayı kullanmaya devam etmek için EventSwipe'ı güncelle.",
   },
 
   // Notifications

@@ -154,6 +154,7 @@ export default {
     signOutConfirm: 'ログアウトしてもよろしいですか？',
     guest: "ゲスト",
     guestText: "アカウントを作成すると、保存したイベントを残したり、自分のイベントを投稿したりできます。",
+    signedInWithApple: "Appleでサインイン中",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "%{name}さんのコメントは表示されなくなります。",
     deleteConfirm: "このコメントを削除しますか？",
     justNow: "たった今",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "アップデートがあります",
+    availableBody: "EventSwipeの新しいバージョンが利用できます。",
+    button: "アップデート",
+    requiredTitle: "アップデートが必要です",
+    requiredBody: "引き続きご利用いただくには、EventSwipeをアップデートしてください。",
   },
 
   // Notifications

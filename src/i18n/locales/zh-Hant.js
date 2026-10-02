@@ -154,6 +154,7 @@ export default {
     signOutConfirm: '你確定要登出嗎？',
     guest: "訪客",
     guestText: "建立帳戶即可保留已儲存的活動並發佈你自己的活動。",
+    signedInWithApple: "已透過 Apple 登入",
   },
 
   // Event Details Modal
@@ -283,6 +284,15 @@ export default {
     blockConfirm: "你將不再看到 %{name} 的留言。",
     deleteConfirm: "刪除這則留言？",
     justNow: "剛剛",
+  },
+
+  // App update prompt
+  update: {
+    availableTitle: "有可用更新",
+    availableBody: "EventSwipe 新版本已準備好。",
+    button: "更新",
+    requiredTitle: "需要更新",
+    requiredBody: "請更新 EventSwipe 以繼續使用。",
   },
 
   // Notifications
