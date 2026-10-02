@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Discover',
     saved: 'Saved',
+    search: "Search",
     post: 'Post',
     activity: 'Activity',
     profile: 'Profile',
@@ -203,6 +204,9 @@ export default {
     mi: 'mi',
     timeRange: 'Time Range',
     when: 'When',
+    pickDates: "Pick dates",
+    from: "From",
+    to: "To",
     categories: 'Categories',
     all: 'All',
     none: 'None',
@@ -293,6 +297,19 @@ export default {
     button: "Update",
     requiredTitle: "Update required",
     requiredBody: "Please update EventSwipe to keep using the app.",
+  },
+
+  // Search tab
+  search: {
+    title: "Search",
+    placeholder: "Artists, venues, events…",
+    prompt: "Looking for something specific?",
+    promptText: "Search by artist, team, venue or event name.",
+    noResults: "No results",
+    noResultsText: "Nothing found for “%{query}” near you. Try a different search.",
+    failed: "Search isn't available right now. Please try again.",
+    noLocation: "Location needed",
+    noLocationText: "Turn on location, or pick a place in Filters, to search nearby.",
   },
 
   // Notifications

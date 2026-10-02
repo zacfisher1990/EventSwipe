@@ -268,25 +268,66 @@ const isCacheFresh = (cachedAt) => {
 };
 
 // Fetch from Ticketmaster
-const fetchTicketmaster = async (lat, lng, radius) => {
+// Dated searches (the app's "pick dates" filter) page through results so a
+// busy day or a multi-day range isn't cut off at the first 200 events.
+const TICKETMASTER_DATED_PAGE_SIZE = 200;
+const TICKETMASTER_DATED_MAX_PAGES = 3;
+
+// A search term from the app: trimmed and length-limited, or null
+const parseKeyword = (keyword) => {
+  if (typeof keyword !== 'string') return null;
+  const cleaned = keyword.trim().replace(/\s+/g, ' ').slice(0, 60);
+  return cleaned.length >= 2 ? cleaned : null;
+};
+// Safe, case-insensitive form for a cache key (Firestore ids can't contain "/")
+const keywordSlug = (keyword) =>
+  keyword.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'x';
+
+// { startDate, endDate } as YYYY-MM-DD from the app, or null if absent/invalid
+const parseDateRange = (startDate, endDate) => {
+  const valid = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
+  if (!valid(startDate)) return null;
+  const end = valid(endDate) && endDate >= startDate ? endDate : startDate;
+  // Keep cache keys and Ticketmaster queries bounded
+  const days = (Date.parse(end) - Date.parse(startDate)) / 86400000;
+  return days <= 366 ? { startDate, endDate: end } : null;
+};
+
+/**
+ * Without a date range: the soonest 100 events from now (what the preset time
+ * filters use). With one: events on those local dates, up to 600.
+ * With a keyword (the Search tab): only events matching it.
+ */
+const fetchTicketmaster = async (lat, lng, radius, dateRange = null, keyword = null) => {
   if (!TICKETMASTER_API_KEY) {
     console.log('Ticketmaster API key not configured');
     return [];
   }
 
   try {
-    const startDateTime = new Date().toISOString().slice(0, 19) + 'Z';
-    const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&size=100&sort=date,asc&startDateTime=${startDateTime}&latlong=${lat},${lng}&radius=${radius}&unit=miles`;
+    const base = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&sort=date,asc&latlong=${lat},${lng}&radius=${radius}&unit=miles` +
+      (keyword ? `&keyword=${encodeURIComponent(keyword)}` : '');
+    const pageUrls = dateRange
+      ? Array.from({ length: TICKETMASTER_DATED_MAX_PAGES }, (_, page) =>
+          `${base}&size=${TICKETMASTER_DATED_PAGE_SIZE}&page=${page}` +
+          // local to each venue, so "Oct 24" means Oct 24 where the event is
+          `&localStartDateTime=${dateRange.startDate}T00:00:00,${dateRange.endDate}T23:59:59`)
+      : [`${base}&size=100&startDateTime=${new Date().toISOString().slice(0, 19)}Z`];
 
-    const response = await fetch(url);
-    const data = await response.json();
+    const events = [];
+    for (const url of pageUrls) {
+      const response = await fetch(url);
+      const data = await response.json();
 
-    if (!response.ok) {
-      console.error('Ticketmaster API error:', data);
-      return [];
+      if (!response.ok) {
+        console.error('Ticketmaster API error:', data);
+        break; // keep whatever earlier pages returned
+      }
+
+      events.push(...(data._embedded?.events || []));
+      if ((data.page?.number ?? 0) + 1 >= (data.page?.totalPages ?? 1)) break;
     }
 
-    const events = data._embedded?.events || [];
     return resolveUnknownCategories(
       inferCategoriesFromVenue(events.map(event => transformTicketmasterEvent(event)))
     );
@@ -429,6 +470,7 @@ const VIATOR_DESTINATIONS_DOC = 'viatorCache/destinations';
 const VIATOR_DESTINATIONS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // Viator suggests weekly
 const VIATOR_MAX_DESTINATIONS = 2;        // nearest destinations to search
 const VIATOR_PRODUCTS_PER_DESTINATION = 30;
+const VIATOR_SEARCH_RESULTS = 20;         // per destination, for keyword searches
 const VIATOR_DESCRIPTION_LIMIT = 600;     // keeps the cache doc well under 1MB
 // Countries, states and regions have a centre point too, but it isn't a place
 const VIATOR_PLACE_TYPES = ['CITY', 'TOWN', 'VILLAGE', 'NEIGHBORHOOD', 'ISLAND', 'NATIONAL_PARK', 'DISTRICT', 'WARD', 'AREA'];
@@ -533,10 +575,11 @@ const transformViatorProduct = (product, destination) => ({
 });
 
 /**
- * Top Viator experiences for the destinations within `radius` miles.
+ * Top Viator experiences for the destinations within `radius` miles, or the
+ * ones matching `keyword` when searching.
  * Never throws: a Viator problem must not take Ticketmaster results down with it.
  */
-const fetchViator = async (lat, lng, radius) => {
+const fetchViator = async (lat, lng, radius, keyword = null) => {
   if (!process.env.VIATOR_API_KEY) {
     console.log('Viator API key not configured');
     return [];
@@ -551,13 +594,21 @@ const fetchViator = async (lat, lng, radius) => {
 
     const batches = await Promise.all(nearby.map(async (destination) => {
       try {
-        const data = await viatorRequest('/products/search', {
-          filtering: { destination: String(destination.id) },
-          sorting: { sort: 'DEFAULT' },
-          pagination: { start: 1, count: VIATOR_PRODUCTS_PER_DESTINATION },
-          currency: destination.currency,
-        });
-        return (data.products || [])
+        const data = keyword
+          ? await viatorRequest('/search/freetext', {
+              searchTerm: keyword,
+              productFiltering: { destination: String(destination.id) },
+              searchTypes: [{ searchType: 'PRODUCTS', pagination: { start: 1, count: VIATOR_SEARCH_RESULTS } }],
+              currency: destination.currency,
+            })
+          : await viatorRequest('/products/search', {
+              filtering: { destination: String(destination.id) },
+              sorting: { sort: 'DEFAULT' },
+              pagination: { start: 1, count: VIATOR_PRODUCTS_PER_DESTINATION },
+              currency: destination.currency,
+            });
+        // Free-text search nests its results one level deeper
+        return ((keyword ? data.products?.results : data.products) || [])
           .filter((p) => p.productCode && p.title && p.productUrl)
           .map((p) => transformViatorProduct(p, destination));
       } catch (error) {
@@ -585,12 +636,18 @@ exports.getEventsForLocation = functions
   .runWith(API_LIMITS)
   .https.onCall(async (data, context) => {
   const { latitude, longitude, radius = 50 } = data;
+  // Optional exact dates; cached separately from the "from now" results
+  const dateRange = parseDateRange(data.startDate, data.endDate);
+  // Optional search term (the Search tab); also cached separately
+  const keyword = parseKeyword(data.keyword);
 
   if (!latitude || !longitude) {
     throw new functions.https.HttpsError('invalid-argument', 'latitude and longitude are required');
   }
 
-  const cacheKey = createCacheKey(latitude, longitude, radius);
+  const cacheKey = createCacheKey(latitude, longitude, radius) +
+    (dateRange ? `_${dateRange.startDate}_${dateRange.endDate}` : '') +
+    (keyword ? `_q_${keywordSlug(keyword)}` : '');
   console.log(`Cache key: ${cacheKey}`);
 
   // Check cache first
@@ -615,8 +672,8 @@ exports.getEventsForLocation = functions
 
   // Both sources at once; each returns [] rather than throwing
   const [ticketmasterEvents, viatorEvents] = await Promise.all([
-    fetchTicketmaster(latitude, longitude, cacheRadius(radius)),
-    fetchViator(latitude, longitude, cacheRadius(radius)),
+    fetchTicketmaster(latitude, longitude, cacheRadius(radius), dateRange, keyword),
+    fetchViator(latitude, longitude, cacheRadius(radius), keyword),
   ]);
   const allEvents = [...ticketmasterEvents, ...viatorEvents];
 

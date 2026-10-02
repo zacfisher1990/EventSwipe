@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: '탐색',
     saved: '저장됨',
+    search: "검색",
     post: '게시',
     activity: '활동',
     profile: '프로필',
@@ -203,6 +204,9 @@ export default {
     mi: 'km',
     timeRange: '기간',
     when: '기간',
+    pickDates: "날짜 선택",
+    from: "시작",
+    to: "종료",
     categories: '카테고리',
     all: '전체',
     none: '없음',
@@ -293,6 +297,19 @@ export default {
     button: "업데이트",
     requiredTitle: "업데이트 필요",
     requiredBody: "앱을 계속 사용하려면 EventSwipe를 업데이트해 주세요.",
+  },
+
+  // Search tab
+  search: {
+    title: "검색",
+    placeholder: "아티스트, 장소, 이벤트…",
+    prompt: "찾는 것이 있나요?",
+    promptText: "아티스트, 팀, 장소 또는 이벤트 이름으로 검색하세요.",
+    noResults: "결과 없음",
+    noResultsText: "근처에서 “%{query}”에 대한 결과를 찾지 못했어요. 다른 검색어를 시도해 보세요.",
+    failed: "지금은 검색을 사용할 수 없어요. 다시 시도해 주세요.",
+    noLocation: "위치 정보 필요",
+    noLocationText: "근처를 검색하려면 위치를 켜거나 필터에서 장소를 선택하세요.",
   },
 
   // Notifications

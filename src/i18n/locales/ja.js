@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: '探す',
     saved: '保存済み',
+    search: "検索",
     post: '投稿',
     activity: 'アクティビティ',
     profile: 'プロフィール',
@@ -203,6 +204,9 @@ export default {
     mi: 'km',
     timeRange: '期間',
     when: 'いつ',
+    pickDates: "日付を選択",
+    from: "開始",
+    to: "終了",
     categories: 'カテゴリー',
     all: 'すべて',
     none: 'なし',
@@ -293,6 +297,19 @@ export default {
     button: "アップデート",
     requiredTitle: "アップデートが必要です",
     requiredBody: "引き続きご利用いただくには、EventSwipeをアップデートしてください。",
+  },
+
+  // Search tab
+  search: {
+    title: "検索",
+    placeholder: "アーティスト、会場、イベント…",
+    prompt: "お探しのものはありますか？",
+    promptText: "アーティスト、チーム、会場、イベント名で検索できます。",
+    noResults: "結果がありません",
+    noResultsText: "近くで「%{query}」は見つかりませんでした。別のキーワードをお試しください。",
+    failed: "現在検索を利用できません。もう一度お試しください。",
+    noLocation: "位置情報が必要です",
+    noLocationText: "近くを検索するには、位置情報をオンにするか、フィルターで場所を選んでください。",
   },
 
   // Notifications

@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Scopri',
     saved: 'Salvati',
+    search: "Cerca",
     post: 'Pubblica',
     activity: 'Attività',
     profile: 'Profilo',
@@ -203,6 +204,9 @@ export default {
     mi: 'km',
     timeRange: 'Periodo',
     when: 'Quando',
+    pickDates: "Scegli le date",
+    from: "Dal",
+    to: "Al",
     categories: 'Categorie',
     all: 'Tutti',
     none: 'Nessuno',
@@ -293,6 +297,19 @@ export default {
     button: "Aggiorna",
     requiredTitle: "Aggiornamento richiesto",
     requiredBody: "Aggiorna EventSwipe per continuare a usare l'app.",
+  },
+
+  // Search tab
+  search: {
+    title: "Cerca",
+    placeholder: "Artisti, locali, eventi…",
+    prompt: "Cerchi qualcosa in particolare?",
+    promptText: "Cerca per artista, squadra, locale o nome dell'evento.",
+    noResults: "Nessun risultato",
+    noResultsText: "Nessun risultato per “%{query}” vicino a te. Prova un'altra ricerca.",
+    failed: "La ricerca non è disponibile al momento. Riprova.",
+    noLocation: "Posizione necessaria",
+    noLocationText: "Attiva la posizione o scegli un luogo nei Filtri per cercare nelle vicinanze.",
   },
 
   // Notifications

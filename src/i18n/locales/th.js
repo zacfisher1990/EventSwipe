@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'ค้นพบ',
     saved: 'บันทึกแล้ว',
+    search: "ค้นหา",
     post: 'โพสต์',
     activity: 'กิจกรรม',
     profile: 'โปรไฟล์',
@@ -203,6 +204,9 @@ export default {
     mi: 'ไมล์',
     timeRange: 'ช่วงเวลา',
     when: 'เมื่อไหร่',
+    pickDates: "เลือกวันที่",
+    from: "ตั้งแต่",
+    to: "ถึง",
     categories: 'หมวดหมู่',
     all: 'ทั้งหมด',
     none: 'ไม่มี',
@@ -293,6 +297,19 @@ export default {
     button: "อัปเดต",
     requiredTitle: "จำเป็นต้องอัปเดต",
     requiredBody: "โปรดอัปเดต EventSwipe เพื่อใช้งานแอปต่อ",
+  },
+
+  // Search tab
+  search: {
+    title: "ค้นหา",
+    placeholder: "ศิลปิน สถานที่ อีเวนต์…",
+    prompt: "กำลังมองหาอะไรอยู่หรือเปล่า",
+    promptText: "ค้นหาด้วยชื่อศิลปิน ทีม สถานที่ หรืออีเวนต์",
+    noResults: "ไม่พบผลลัพธ์",
+    noResultsText: "ไม่พบ “%{query}” ใกล้คุณ ลองค้นหาคำอื่น",
+    failed: "ขณะนี้ไม่สามารถค้นหาได้ โปรดลองอีกครั้ง",
+    noLocation: "ต้องใช้ตำแหน่ง",
+    noLocationText: "เปิดตำแหน่งหรือเลือกสถานที่ในตัวกรองเพื่อค้นหาใกล้เคียง",
   },
 
   // Notifications

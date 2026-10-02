@@ -117,6 +117,21 @@ export function EventCacheProvider({ children }) {
     schedulePersistDeck();
   }, [schedulePersistDeck]);
 
+  // An event saved somewhere other than the deck (e.g. from Search): keep it
+  // from coming up again as a card. Cards already on screen are left alone.
+  const excludeFromDeck = useCallback((event) => {
+    const ids = eventIds(event);
+    ids.forEach(id => sessionSwipedRef.current.add(id));
+    const deck = deckRef.current;
+    const keep = deckPosRef.current + VISIBLE_CARDS;
+    const trimmed = deck.filter((card, index) =>
+      index < keep || !eventIds(card).some(id => ids.includes(id)));
+    if (trimmed.length !== deck.length) {
+      deckRef.current = trimmed;
+      setEvents(trimmed);
+    }
+  }, []);
+
   const unmarkSwiped = useCallback((event) => {
     eventIds(event).forEach(id => sessionSwipedRef.current.delete(id));
     deckPosRef.current = Math.max(0, deckPosRef.current - 1);
@@ -289,6 +304,9 @@ export function EventCacheProvider({ children }) {
       prefetchAhead,
       markSwiped,
       unmarkSwiped,
+      excludeFromDeck,
+      // The user's current search location (their own, or the one picked in Filters)
+      getSearchLocation: () => getLocation(filtersRef.current.location),
     }}>
       {children}
     </EventCacheContext.Provider>

@@ -8,6 +8,7 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import SaveFireworks from '../components/SaveFireworks';
 import { openTickets } from '../utils/openLink';
+import { formatDateRange } from '../utils/dates';
 import { submitReport } from '../services/reportService';
 import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
@@ -238,7 +239,7 @@ export default function HomeScreen() {
       {filters.location && (
         <View style={[styles.locationBar, filters.isCustomLocation && styles.customLocationBar]}>
           <Text style={styles.locationBarText}>
-            {filters.isCustomLocation && '📍 '}{filters.location.city}{filters.location.region ? `, ${filters.location.region}` : ''} • {filters.distance} {i18n.t('filters.miles')} • {filters.timeRange}
+            {filters.isCustomLocation && '📍 '}{filters.location.city}{filters.location.region ? `, ${filters.location.region}` : ''} • {filters.distance} {i18n.t('filters.miles')} • {filters.timeRange === 'custom' ? formatDateRange(filters.customStart, filters.customEnd) : filters.timeRange}
           </Text>
         </View>
       )}

@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Огляд',
     saved: 'Збережені',
+    search: "Пошук",
     post: 'Створити',
     activity: 'Активність',
     profile: 'Профіль',
@@ -203,6 +204,9 @@ export default {
     mi: 'км',
     timeRange: 'Період',
     when: 'Коли',
+    pickDates: "Обрати дати",
+    from: "З",
+    to: "По",
     categories: 'Категорії',
     all: 'Усі',
     none: 'Жодного',
@@ -293,6 +297,19 @@ export default {
     button: "Оновити",
     requiredTitle: "Потрібне оновлення",
     requiredBody: "Онови EventSwipe, щоб і далі користуватися застосунком.",
+  },
+
+  // Search tab
+  search: {
+    title: "Пошук",
+    placeholder: "Артисти, майданчики, події…",
+    prompt: "Шукаєш щось конкретне?",
+    promptText: "Шукай за артистом, командою, місцем або назвою події.",
+    noResults: "Нічого не знайдено",
+    noResultsText: "За запитом «%{query}» поруч нічого не знайдено. Спробуй інший запит.",
+    failed: "Пошук зараз недоступний. Спробуй ще раз.",
+    noLocation: "Потрібна геолокація",
+    noLocationText: "Увімкни геолокацію або обери місце у Фільтрах, щоб шукати поруч.",
   },
 
   // Notifications

@@ -7,7 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PostEventScreen from '../screens/PostEventScreen';
-import ActivityScreen from '../screens/ActivityScreen';
+import SearchScreen from '../screens/SearchScreen';
 import i18n from '../i18n';
 import { useAuth } from '../context/AuthContext';
 
@@ -61,13 +61,13 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
+        name="Search"
+        component={SearchScreen}
         options={{
-          tabBarLabel: i18n.t('tabs.saved'),
+          tabBarLabel: i18n.t('tabs.search'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name={focused ? 'heart' : 'heart-outline'}
+              name={focused ? 'search' : 'search-outline'}
               size={26}
               color={color}
             />
@@ -95,19 +95,19 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Activity"
-        component={ActivityScreen}
+        name="Saved"
+        component={SavedScreen}
         options={{
-            tabBarLabel: i18n.t('tabs.activity'),
-            tabBarIcon: ({ focused, color }) => (
+          tabBarLabel: i18n.t('tabs.saved'),
+          tabBarIcon: ({ focused, color }) => (
             <Ionicons
-                name={focused ? 'notifications' : 'notifications-outline'}
-                size={26}
-                color={color}
+              name={focused ? 'heart' : 'heart-outline'}
+              size={26}
+              color={color}
             />
-            ),
+          ),
         }}
-        />
+      />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}

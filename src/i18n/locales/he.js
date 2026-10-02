@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'גלה',
     saved: 'שמורים',
+    search: "חיפוש",
     post: 'פרסם',
     activity: 'פעילות',
     profile: 'פרופיל',
@@ -214,6 +215,9 @@ export default {
     applyFilters: 'החל סינון',
     mi: 'מייל',
     when: 'מתי',
+    pickDates: "בחירת תאריכים",
+    from: "מ־",
+    to: "עד",
     change: 'שנה',
     all: 'הכל',
     none: 'כלום',
@@ -293,6 +297,19 @@ export default {
     button: "עדכון",
     requiredTitle: "נדרש עדכון",
     requiredBody: "עדכנו את EventSwipe כדי להמשיך להשתמש באפליקציה.",
+  },
+
+  // Search tab
+  search: {
+    title: "חיפוש",
+    placeholder: "אמנים, מקומות, אירועים…",
+    prompt: "מחפשים משהו מסוים?",
+    promptText: "חפשו לפי אמן, קבוצה, מקום או שם אירוע.",
+    noResults: "אין תוצאות",
+    noResultsText: "לא נמצא דבר עבור “%{query}” בקרבתכם. נסו חיפוש אחר.",
+    failed: "החיפוש אינו זמין כרגע. נסו שוב.",
+    noLocation: "נדרש מיקום",
+    noLocationText: "הפעילו את המיקום או בחרו מקום במסננים כדי לחפש בסביבה.",
   },
 
   // Notifications

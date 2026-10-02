@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'اكتشف',
     saved: 'المحفوظات',
+    search: "بحث",
     post: 'نشر',
     activity: 'النشاط',
     profile: 'الملف الشخصي',
@@ -214,6 +215,9 @@ export default {
     applyFilters: 'تطبيق التصفية',
     mi: 'ميل',
     when: 'متى',
+    pickDates: "اختر التواريخ",
+    from: "من",
+    to: "إلى",
     change: 'تغيير',
     all: 'الكل',
     none: 'لا شيء',
@@ -293,6 +297,19 @@ export default {
     button: "تحديث",
     requiredTitle: "التحديث مطلوب",
     requiredBody: "يُرجى تحديث EventSwipe لمواصلة استخدام التطبيق.",
+  },
+
+  // Search tab
+  search: {
+    title: "بحث",
+    placeholder: "فنانون، أماكن، فعاليات…",
+    prompt: "هل تبحث عن شيء محدد؟",
+    promptText: "ابحث باسم الفنان أو الفريق أو المكان أو الفعالية.",
+    noResults: "لا توجد نتائج",
+    noResultsText: "لم يُعثر على شيء لـ «%{query}» بالقرب منك. جرّب بحثًا آخر.",
+    failed: "البحث غير متاح حاليًا. حاول مرة أخرى.",
+    noLocation: "الموقع مطلوب",
+    noLocationText: "فعّل الموقع أو اختر مكانًا من الفلاتر للبحث في الجوار.",
   },
 
   // Notifications

@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../i18n';
+import { parseEventDate, toLocalDateString, formatShortDate } from '../utils/dates';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 150;
@@ -46,11 +48,29 @@ const TIME_RANGES = [
   { id: 'month', labelKey: 'filters.thisMonth' },
   { id: '3months', labelKey: 'filters.threeMonths' },
   { id: 'year', labelKey: 'filters.thisYear' },
-];
+  // Exact dates: shows From / To pickers below the chips
+  { id: 'custom', labelKey: 'filters.pickDates' },
+].filter(range => range.id !== 'custom' || Platform.OS !== 'web'); // no native picker on web
+
+const startOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+// Saved picked dates, never earlier than today
+const savedDate = (dateString) => {
+  const date = parseEventDate(dateString);
+  const today = startOfToday();
+  return date && date >= today ? date : today;
+};
 
 export default function FilterModal({ visible, onClose, filters, onApply }) {
   const [distance, setDistance] = useState(filters?.distance || 25);
   const [timeRange, setTimeRange] = useState(filters?.timeRange || 'month');
+  const [customStart, setCustomStart] = useState(() => savedDate(filters?.customStart));
+  const [customEnd, setCustomEnd] = useState(() => savedDate(filters?.customEnd || filters?.customStart));
+  const [androidPicker, setAndroidPicker] = useState(null); // 'start' | 'end' while its dialog is open
   const [selectedCategories, setSelectedCategories] = useState(
     filters?.categories || CATEGORIES.map(c => c.id)
   );
@@ -75,6 +95,9 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
       // Sync local state with parent filters on every open
       setDistance(filters?.distance || 25);
       setTimeRange(filters?.timeRange || 'month');
+      setCustomStart(savedDate(filters?.customStart));
+      setCustomEnd(savedDate(filters?.customEnd || filters?.customStart));
+      setAndroidPicker(null);
       setSelectedCategories(filters?.categories || CATEGORIES.map(c => c.id));
       setLocation(filters?.location || null);
       setIsCustomLocation(filters?.isCustomLocation || false);
@@ -411,10 +434,26 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
     setSelectedCategories([]);
   };
 
+  // "To" can't be before "From": moving one drags the other along
+  const onDatePicked = (which) => (event, date) => {
+    if (Platform.OS === 'android') setAndroidPicker(null);
+    if (event?.type === 'dismissed' || !date) return;
+    if (which === 'start') {
+      setCustomStart(date);
+      if (customEnd < date) setCustomEnd(date);
+    } else {
+      setCustomEnd(date < customStart ? customStart : date);
+    }
+  };
+
   const handleApply = () => {
     const appliedFilters = {
       distance,
       timeRange,
+      ...(timeRange === 'custom' && {
+        customStart: toLocalDateString(customStart),
+        customEnd: toLocalDateString(customEnd),
+      }),
       categories: selectedCategories,
       location,
       isCustomLocation,
@@ -649,6 +688,47 @@ export default function FilterModal({ visible, onClose, filters, onApply }) {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {timeRange === 'custom' && (
+                <View style={styles.dateRow}>
+                  {['start', 'end'].map((which) => {
+                    const value = which === 'start' ? customStart : customEnd;
+                    const minimumDate = which === 'start' ? startOfToday() : customStart;
+                    return (
+                      <View key={which} style={styles.dateField}>
+                        <Text style={styles.dateLabel}>
+                          {i18n.t(which === 'start' ? 'filters.from' : 'filters.to')}
+                        </Text>
+                        {Platform.OS === 'ios' ? (
+                          <DateTimePicker
+                            value={value}
+                            mode="date"
+                            display="compact"
+                            themeVariant="light"
+                            accentColor="#4ECDC4"
+                            minimumDate={minimumDate}
+                            onChange={onDatePicked(which)}
+                          />
+                        ) : (
+                          <TouchableOpacity style={styles.dateButton} onPress={() => setAndroidPicker(which)}>
+                            <Text style={styles.dateButtonText}>{formatShortDate(value)}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              {/* Android shows the date picker as a dialog while this is mounted */}
+              {timeRange === 'custom' && androidPicker && Platform.OS === 'android' && (
+                <DateTimePicker
+                  value={androidPicker === 'start' ? customStart : customEnd}
+                  mode="date"
+                  display="default"
+                  minimumDate={androidPicker === 'start' ? startOfToday() : customStart}
+                  onChange={onDatePicked(androidPicker)}
+                />
+              )}
             </View>
 
             {/* Categories Section */}
@@ -946,6 +1026,31 @@ const styles = StyleSheet.create({
   },
   timeChipSelected: {
     backgroundColor: '#4ECDC4',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 8,
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  dateButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  dateButtonText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
   },
   timeChipText: {
     fontSize: 14,

@@ -198,7 +198,20 @@ export const normalizeCategory = (category) => {
 
 // Saved filters from before 'experiences' existed: every category of the time
 // selected meant "everything", so keep it meaning that.
-export const migrateFilters = (filters) => {
+export const migrateFilters = (savedFilters) => {
+  let filters = savedFilters;
+
+  // Picked dates that have passed (or are unreadable) would show an empty deck
+  if (filters?.timeRange === 'custom') {
+    const custom = customDateRange(filters);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!custom || custom.end < today) {
+      const { customStart, customEnd, ...rest } = filters;
+      filters = { ...rest, timeRange: 'month' };
+    }
+  }
+
   const selected = filters?.categories;
   if (!Array.isArray(selected) || selected.includes('experiences')) return filters;
   const hadAll = VALID_FILTER_CATEGORIES.every(id => id === 'experiences' || selected.includes(id));
@@ -225,11 +238,33 @@ const CATEGORY_PLACEHOLDERS = {
 };
 
 // Get time range dates
-const getTimeRangeDates = (timeRange) => {
+// The exact dates of a "pick dates" filter, or null for the preset ranges.
+// customStart / customEnd are local YYYY-MM-DD strings (end defaults to start).
+export const customDateRange = (filters) => {
+  if (filters?.timeRange !== 'custom') return null;
+  const start = parseEventDate(filters.customStart);
+  if (!start) return null;
+  const end = parseEventDate(filters.customEnd);
+  const sameOrLater = end && end >= start;
+  return {
+    startDate: filters.customStart,
+    endDate: sameOrLater ? filters.customEnd : filters.customStart,
+    start,
+    end: sameOrLater ? end : new Date(start),
+  };
+};
+
+const getTimeRangeDates = (timeRange, filters) => {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let startDate = startOfToday;
   let endDate = new Date();
+
+  const custom = customDateRange(filters);
+  if (custom) {
+    custom.end.setHours(23, 59, 59, 999);
+    return { startDate: custom.start, endDate: custom.end };
+  }
   
   switch (timeRange) {
     case 'today':
@@ -493,14 +528,19 @@ const fetchFirestoreEvents = async (location, radius) => {
     .map(event => ({ ...event, category: normalizeCategory(event.category) }));
 };
 
-const fetchApiEvents = async (location, radius) => {
+const fetchApiEvents = async (location, radius, filters, keyword = null) => {
   if (!location) return [];
   try {
     perfMark('net:cloudfn-sent');
+    // With exact dates picked, the backend searches those dates specifically
+    // (otherwise it returns the soonest events from now, which may not reach them)
+    const custom = customDateRange(filters);
     const result = await getEventsForLocation({
       latitude: location.latitude,
       longitude: location.longitude,
       radius,
+      ...(custom && { startDate: custom.startDate, endDate: custom.endDate }),
+      ...(keyword && { keyword }),
     });
     perfMark('net:cloudfn-received', {
       events: result.data?.events?.length ?? 0,
@@ -569,7 +609,7 @@ const processEvents = (rawEvents, location, filters, swipedIds) => {
 
   // Time range
   if (filters?.timeRange) {
-    const { startDate, endDate } = getTimeRangeDates(filters.timeRange);
+    const { startDate, endDate } = getTimeRangeDates(filters.timeRange, filters);
     events = events.filter(event => {
       if (event.ongoing) return true; // available any day
       if (!event.date) return false;
@@ -633,7 +673,7 @@ export const getEvents = async (userId, location, filters = {}, onUpdate) => {
 
     const sources = [
       fetchFirestoreEvents(location, radius),
-      fetchApiEvents(location, radius),
+      fetchApiEvents(location, radius, filters),
     ];
 
     const received = [];
@@ -668,6 +708,43 @@ export const getEvents = async (userId, location, filters = {}, onUpdate) => {
     return { success: true, events: latest };
   } catch (error) {
     console.error('Error getting events:', error);
+    return { success: false, error: error.message, events: [] };
+  }
+};
+
+// ============================================================
+// SEARCH (the Search tab): events matching a keyword, from every source
+// ============================================================
+
+// Wider than the default swipe radius: people search for a specific thing
+// ("is that band playing near here?") and will travel further for it.
+export const SEARCH_RADIUS_MILES = 100;
+
+export const searchEvents = async (location, keyword) => {
+  try {
+    const term = (keyword || '').trim();
+    if (!location || term.length < 2) return { success: true, events: [] };
+    const needle = term.toLowerCase();
+
+    const [posted, api] = await Promise.all([
+      // User-posted events are few: fetch the nearby ones and match here
+      fetchFirestoreEvents(location, SEARCH_RADIUS_MILES).catch(() => []),
+      fetchApiEvents(location, SEARCH_RADIUS_MILES, null, term),
+    ]);
+    const matches = posted.filter(event =>
+      [event.title, event.location, event.description]
+        .some(text => (text || '').toLowerCase().includes(needle)));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Same dedupe / grouping / ordering as the deck; already-swiped events
+    // are kept, since the user asked for them by name
+    const events = processEvents([...matches, ...api], location, { distance: SEARCH_RADIUS_MILES }, new Set())
+      .filter(event => event.ongoing || (parseEventDate(event.date) || 0) >= today);
+
+    return { success: true, events };
+  } catch (error) {
+    console.error('Error searching events:', error);
     return { success: false, error: error.message, events: [] };
   }
 };

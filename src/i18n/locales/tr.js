@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Keşfet',
     saved: 'Kaydedilenler',
+    search: "Ara",
     post: 'Paylaş',
     activity: 'Etkinlik',
     profile: 'Profil',
@@ -203,6 +204,9 @@ export default {
     mi: 'km',
     timeRange: 'Zaman Aralığı',
     when: 'Ne Zaman',
+    pickDates: "Tarih seç",
+    from: "Başlangıç",
+    to: "Bitiş",
     categories: 'Kategoriler',
     all: 'Tümü',
     none: 'Hiçbiri',
@@ -293,6 +297,19 @@ export default {
     button: "Güncelle",
     requiredTitle: "Güncelleme gerekli",
     requiredBody: "Uygulamayı kullanmaya devam etmek için EventSwipe'ı güncelle.",
+  },
+
+  // Search tab
+  search: {
+    title: "Ara",
+    placeholder: "Sanatçılar, mekanlar, etkinlikler…",
+    prompt: "Belirli bir şey mi arıyorsun?",
+    promptText: "Sanatçı, takım, mekan veya etkinlik adıyla ara.",
+    noResults: "Sonuç yok",
+    noResultsText: "Yakınında “%{query}” için bir şey bulunamadı. Başka bir arama dene.",
+    failed: "Arama şu anda kullanılamıyor. Lütfen tekrar dene.",
+    noLocation: "Konum gerekli",
+    noLocationText: "Yakınında aramak için konumu aç veya Filtreler'den bir yer seç.",
   },
 
   // Notifications

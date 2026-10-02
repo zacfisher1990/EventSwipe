@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: '探索',
     saved: '已儲存',
+    search: "搜尋",
     post: '發佈',
     activity: '動態',
     profile: '個人檔案',
@@ -203,6 +204,9 @@ export default {
     mi: '英里',
     timeRange: '時間範圍',
     when: '時間',
+    pickDates: "選擇日期",
+    from: "從",
+    to: "到",
     categories: '類別',
     all: '全部',
     none: '無',
@@ -293,6 +297,19 @@ export default {
     button: "更新",
     requiredTitle: "需要更新",
     requiredBody: "請更新 EventSwipe 以繼續使用。",
+  },
+
+  // Search tab
+  search: {
+    title: "搜尋",
+    placeholder: "藝人、場館、活動…",
+    prompt: "想找點特別的？",
+    promptText: "依藝人、球隊、場館或活動名稱搜尋。",
+    noResults: "沒有結果",
+    noResultsText: "附近沒有找到「%{query}」。換個關鍵字試試。",
+    failed: "搜尋暫時無法使用，請再試一次。",
+    noLocation: "需要位置資訊",
+    noLocationText: "開啟定位，或在篩選中選擇地點，即可搜尋附近。",
   },
 
   // Notifications

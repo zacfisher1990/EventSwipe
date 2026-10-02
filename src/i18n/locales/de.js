@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Entdecken',
     saved: 'Gespeichert',
+    search: "Suche",
     post: 'Erstellen',
     activity: 'Aktivität',
     profile: 'Profil',
@@ -214,6 +215,9 @@ export default {
     applyFilters: 'Filter anwenden',
     mi: 'km',
     when: 'Wann',
+    pickDates: "Datum wählen",
+    from: "Von",
+    to: "Bis",
     change: 'Ändern',
     all: 'Alle',
     none: 'Keine',
@@ -293,6 +297,19 @@ export default {
     button: "Aktualisieren",
     requiredTitle: "Update erforderlich",
     requiredBody: "Bitte aktualisiere EventSwipe, um die App weiter zu nutzen.",
+  },
+
+  // Search tab
+  search: {
+    title: "Suche",
+    placeholder: "Künstler, Locations, Events…",
+    prompt: "Suchst du etwas Bestimmtes?",
+    promptText: "Suche nach Künstler, Team, Location oder Eventnamen.",
+    noResults: "Keine Ergebnisse",
+    noResultsText: "Nichts gefunden für „%{query}“ in deiner Nähe. Versuch eine andere Suche.",
+    failed: "Die Suche ist gerade nicht verfügbar. Bitte versuche es erneut.",
+    noLocation: "Standort erforderlich",
+    noLocationText: "Aktiviere den Standort oder wähle in den Filtern einen Ort, um in der Nähe zu suchen.",
   },
 
   // Notifications

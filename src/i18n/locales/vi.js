@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Khám phá',
     saved: 'Đã lưu',
+    search: "Tìm kiếm",
     post: 'Đăng',
     activity: 'Hoạt động',
     profile: 'Hồ sơ',
@@ -203,6 +204,9 @@ export default {
     mi: 'dặm',
     timeRange: 'Khoảng thời gian',
     when: 'Khi nào',
+    pickDates: "Chọn ngày",
+    from: "Từ",
+    to: "Đến",
     categories: 'Danh mục',
     all: 'Tất cả',
     none: 'Không có',
@@ -293,6 +297,19 @@ export default {
     button: "Cập nhật",
     requiredTitle: "Cần cập nhật",
     requiredBody: "Vui lòng cập nhật EventSwipe để tiếp tục sử dụng ứng dụng.",
+  },
+
+  // Search tab
+  search: {
+    title: "Tìm kiếm",
+    placeholder: "Nghệ sĩ, địa điểm, sự kiện…",
+    prompt: "Bạn đang tìm thứ gì cụ thể?",
+    promptText: "Tìm theo nghệ sĩ, đội, địa điểm hoặc tên sự kiện.",
+    noResults: "Không có kết quả",
+    noResultsText: "Không tìm thấy “%{query}” gần bạn. Hãy thử từ khóa khác.",
+    failed: "Hiện không thể tìm kiếm. Vui lòng thử lại.",
+    noLocation: "Cần vị trí",
+    noLocationText: "Bật vị trí hoặc chọn một địa điểm trong Bộ lọc để tìm quanh đây.",
   },
 
   // Notifications

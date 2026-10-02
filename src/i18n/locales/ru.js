@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Обзор',
     saved: 'Сохранённые',
+    search: "Поиск",
     post: 'Создать',
     activity: 'Активность',
     profile: 'Профиль',
@@ -203,6 +204,9 @@ export default {
     mi: 'км',
     timeRange: 'Период',
     when: 'Когда',
+    pickDates: "Выбрать даты",
+    from: "С",
+    to: "По",
     categories: 'Категории',
     all: 'Все',
     none: 'Ничего',
@@ -293,6 +297,19 @@ export default {
     button: "Обновить",
     requiredTitle: "Требуется обновление",
     requiredBody: "Обнови EventSwipe, чтобы продолжить пользоваться приложением.",
+  },
+
+  // Search tab
+  search: {
+    title: "Поиск",
+    placeholder: "Артисты, площадки, события…",
+    prompt: "Ищешь что-то конкретное?",
+    promptText: "Ищи по артисту, команде, площадке или названию события.",
+    noResults: "Ничего не найдено",
+    noResultsText: "По запросу «%{query}» рядом ничего не найдено. Попробуй другой запрос.",
+    failed: "Поиск сейчас недоступен. Попробуй ещё раз.",
+    noLocation: "Нужна геолокация",
+    noLocationText: "Включи геолокацию или выбери место в Фильтрах, чтобы искать поблизости.",
   },
 
   // Notifications

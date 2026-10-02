@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: 'Jelajahi',
     saved: 'Tersimpan',
+    search: "Cari",
     post: 'Posting',
     activity: 'Aktivitas',
     profile: 'Profil',
@@ -203,6 +204,9 @@ export default {
     mi: 'km',
     timeRange: 'Rentang Waktu',
     when: 'Kapan',
+    pickDates: "Pilih tanggal",
+    from: "Dari",
+    to: "Sampai",
     categories: 'Kategori',
     all: 'Semua',
     none: 'Tidak Ada',
@@ -293,6 +297,19 @@ export default {
     button: "Perbarui",
     requiredTitle: "Pembaruan diperlukan",
     requiredBody: "Perbarui EventSwipe untuk terus menggunakan aplikasi.",
+  },
+
+  // Search tab
+  search: {
+    title: "Cari",
+    placeholder: "Artis, tempat, acara…",
+    prompt: "Mencari sesuatu yang spesifik?",
+    promptText: "Cari berdasarkan artis, tim, tempat, atau nama acara.",
+    noResults: "Tidak ada hasil",
+    noResultsText: "Tidak ada hasil untuk “%{query}” di dekatmu. Coba pencarian lain.",
+    failed: "Pencarian tidak tersedia saat ini. Coba lagi.",
+    noLocation: "Lokasi diperlukan",
+    noLocationText: "Aktifkan lokasi atau pilih tempat di Filter untuk mencari di sekitar.",
   },
 
   // Notifications

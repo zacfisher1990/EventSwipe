@@ -375,7 +375,7 @@ export default function PostEventScreen({ navigation, route }) {
     resetForm();
     setSuccess(false);
     if (isEditing) {
-      navigation.navigate('Activity');
+      navigation.navigate('Saved', { section: 'posted' });
     } else {
       navigation.navigate('Discover');
     }

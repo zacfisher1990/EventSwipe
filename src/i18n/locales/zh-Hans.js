@@ -27,6 +27,7 @@ export default {
   tabs: {
     discover: '发现',
     saved: '已保存',
+    search: "搜索",
     post: '发布',
     activity: '动态',
     profile: '个人资料',
@@ -203,6 +204,9 @@ export default {
     mi: '英里',
     timeRange: '时间范围',
     when: '时间',
+    pickDates: "选择日期",
+    from: "从",
+    to: "到",
     categories: '类别',
     all: '全部',
     none: '无',
@@ -293,6 +297,19 @@ export default {
     button: "更新",
     requiredTitle: "需要更新",
     requiredBody: "请更新 EventSwipe 以继续使用。",
+  },
+
+  // Search tab
+  search: {
+    title: "搜索",
+    placeholder: "艺人、场馆、活动…",
+    prompt: "想找点特别的？",
+    promptText: "按艺人、球队、场馆或活动名称搜索。",
+    noResults: "没有结果",
+    noResultsText: "附近没有找到“%{query}”。换个关键词试试。",
+    failed: "搜索暂时不可用，请重试。",
+    noLocation: "需要位置信息",
+    noLocationText: "开启定位，或在筛选中选择地点，即可搜索附近。",
   },
 
   // Notifications
