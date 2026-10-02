@@ -176,7 +176,7 @@ export default function ProfileScreen() {
   };
 
   const handleSupport = () => {
-    Linking.openURL('mailto:support@eventswipeapp.com?subject=EventSwipe Support Request');
+    Linking.openURL('mailto:support@proxtrades.com?subject=EventSwipe Support Request');
   };
 
   const handleSignOut = async () => {
