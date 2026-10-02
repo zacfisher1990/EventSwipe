@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import i18n from '../i18n';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Capped so swipe distances stay phone-sized in a wide browser window
+const SCREEN_WIDTH = Math.min(Dimensions.get('window').width, 480);
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_OUT_DURATION = 200;
 

@@ -563,7 +563,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
           ) : null}
 
           {/* Comments */}
-          <View onLayout={(e) => { commentsY.current = e.nativeEvent.layout.y; }}>
+          <View style={styles.commentsWrap} onLayout={(e) => { commentsY.current = e.nativeEvent.layout.y; }}>
             <CommentsSection
               event={event}
               onInputFocus={scrollToComments}
@@ -869,6 +869,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  commentsWrap: {
+    paddingHorizontal: 20,
+    marginTop: 12,
   },
   bottomPadding: {
     height: 100,

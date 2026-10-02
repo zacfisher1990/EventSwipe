@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
@@ -35,7 +35,8 @@ export default function TabNavigator() {
           borderTopColor: '#eee',
           paddingTop: 8,
           paddingBottom: insets.bottom + 10,
-          height: 60 + insets.bottom,
+          // On web each tab has its own inner padding, which clipped the labels at 60
+          height: (Platform.OS === 'web' ? 78 : 60) + insets.bottom,
         },
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: '#999',

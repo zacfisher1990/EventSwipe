@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { EventCacheProvider } from './src/context/EventCacheContext';
 import AuthModal from './src/components/AuthModal';
 import UpdateBanner from './src/components/UpdateBanner';
+import { useLastNotificationTap } from './src/utils/notificationTaps';
 import TabNavigator from './src/navigation/TabNavigator';
 import { useFonts, Shrikhand_400Regular } from '@expo-google-fonts/shrikhand';
 import { perfMark } from './src/utils/perf';
@@ -20,13 +20,13 @@ function AppContent() {
 
   // Tapping a notification opens the tab it points at (reminders → Saved,
   // weekend roundup → Discover). Covers both cold starts and running app.
-  const lastResponse = Notifications.useLastNotificationResponse();
+  const lastTap = useLastNotificationTap();
   useEffect(() => {
-    const screen = lastResponse?.notification.request.content.data?.screen;
+    const screen = lastTap?.notification.request.content.data?.screen;
     if (screen && navReady && navigationRef.isReady()) {
       navigationRef.navigate(screen);
     }
-  }, [lastResponse, navReady]);
+  }, [lastTap, navReady]);
 
   if (!isLoading) {
     // Auth has settled: firebase restored (or failed to restore) the session AND
@@ -45,7 +45,12 @@ function AppContent() {
   
   return user ? (
     <EventCacheProvider>
-      <NavigationContainer ref={navigationRef} onReady={() => setNavReady(true)}>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => setNavReady(true)}
+        // Web: keep the browser tab title as the app name, not the screen name
+        documentTitle={{ formatter: () => 'EventSwipe' }}
+      >
         <TabNavigator />
       </NavigationContainer>
       <Modal

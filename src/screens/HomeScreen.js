@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { saveEvent, passEvent, undoPassEvent, undoSaveEvent } from '../services/eventService';
 import { useEventCache } from '../context/EventCacheContext';
@@ -100,6 +101,21 @@ export default function HomeScreen() {
       await undoSaveEvent(user.uid, event);
     }
   };
+
+  // Web: there's no touch swipe on a desktop, so the deck gets Pass / Save
+  // buttons and the left / right arrow keys.
+  const hasCards = !loading && !allSwiped && events.length > 0;
+  const deckBlocked = showFilters || selectedEvent !== null;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !hasCards || deckBlocked) return undefined;
+    const onKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+      if (e.key === 'ArrowLeft') swiperRef.current?.swipeLeft();
+      if (e.key === 'ArrowRight') swiperRef.current?.swipeRight();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [hasCards, deckBlocked]);
 
   const handleApplyFilters = (newFilters) => {
     setAllSwiped(false);
@@ -269,8 +285,29 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {Platform.OS === 'web' && hasCards && (
+        <View style={styles.webControls}>
+          <TouchableOpacity
+            style={styles.webButton}
+            onPress={() => swiperRef.current?.swipeLeft()}
+            accessibilityRole="button"
+            accessibilityLabel={i18n.t('swipe.nope')}
+          >
+            <Ionicons name="close" size={32} color="#FF6B6B" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.webButton}
+            onPress={() => swiperRef.current?.swipeRight()}
+            accessibilityRole="button"
+            accessibilityLabel={i18n.t('swipe.save')}
+          >
+            <Ionicons name="heart" size={30} color="#4ECDC4" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {lastSwipe && (
-        <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
+        <TouchableOpacity style={[styles.undoButton, Platform.OS === 'web' && styles.undoButtonWeb]} onPress={handleUndo}>
           <Text style={styles.undoButtonText}>↩ Undo</Text>
         </TouchableOpacity>
       )}
@@ -344,6 +381,28 @@ const styles = StyleSheet.create({
   },
   swiperContainer: {
     flex: 1,
+  },
+  webControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 120,
+    paddingBottom: 14,
+  },
+  webButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  // Sits between the Pass and Save buttons on web
+  undoButtonWeb: {
+    bottom: 26,
   },
   undoButton: {
     position: 'absolute',

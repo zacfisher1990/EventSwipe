@@ -1,5 +1,7 @@
 // Imported first so release builds are quiet before anything else evaluates.
 import './src/utils/quietLogs';
+// Browser-only layout and dialog setup (empty on iOS and Android).
+import './src/utils/webSetup';
 // Imported next so its T0 is captured before the app module graph evaluates.
 import { perfMark } from './src/utils/perf';
 
