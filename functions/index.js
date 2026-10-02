@@ -12,7 +12,7 @@ const db = admin.firestore();
 // Upper limits on how many copies of each function can run at once, so a bug
 // or abuse can't scale (and bill) without bound. Requests beyond the cap wait
 // or are rejected; raise these if real traffic outgrows them.
-const API_LIMITS = { minInstances: 1, maxInstances: 20 }; // called by the app; 1 kept warm
+const API_LIMITS = { minInstances: 1, maxInstances: 20, secrets: ['VIATOR_API_KEY'] }; // called by the app; 1 kept warm
 const TRIGGER_LIMITS = { maxInstances: 5 };               // Firestore / Auth triggers
 const SCHEDULED_LIMITS = { maxInstances: 1 };             // cron jobs
 
@@ -415,6 +415,166 @@ const transformTicketmasterEvent = (event) => {
   };
 };
 
+// ============================================================
+// VIATOR EXPERIENCES (tours and activities)
+// Viator searches by destination, not coordinates, so nearby destinations are
+// found from its destination list (each has a centre point) and their top
+// products are returned alongside the Ticketmaster events. Products have no
+// fixed date: they use the app's `ongoing` event fields.
+// The API key is the VIATOR_API_KEY secret (see API_LIMITS.secrets).
+// ============================================================
+
+const VIATOR_API = 'https://api.viator.com/partner';
+const VIATOR_DESTINATIONS_DOC = 'viatorCache/destinations';
+const VIATOR_DESTINATIONS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // Viator suggests weekly
+const VIATOR_MAX_DESTINATIONS = 2;        // nearest destinations to search
+const VIATOR_PRODUCTS_PER_DESTINATION = 30;
+const VIATOR_DESCRIPTION_LIMIT = 600;     // keeps the cache doc well under 1MB
+// Countries, states and regions have a centre point too, but it isn't a place
+const VIATOR_PLACE_TYPES = ['CITY', 'TOWN', 'VILLAGE', 'NEIGHBORHOOD', 'ISLAND', 'NATIONAL_PARK', 'DISTRICT', 'WARD', 'AREA'];
+
+const viatorRequest = async (path, body) => {
+  const response = await fetch(`${VIATOR_API}${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      'exp-api-key': process.env.VIATOR_API_KEY,
+      Accept: 'application/json;version=2.0',
+      'Accept-Language': 'en-US',
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw new Error(`Viator ${path} returned HTTP ${response.status}`);
+  return response.json();
+};
+
+// The destination list changes rarely: kept in memory per instance and in
+// Firestore across instances, refreshed from Viator weekly.
+let viatorDestinations = null;
+
+const getViatorDestinations = async () => {
+  if (viatorDestinations && Date.now() - viatorDestinations.fetchedAt < VIATOR_DESTINATIONS_TTL_MS) {
+    return viatorDestinations.list;
+  }
+
+  const ref = db.doc(VIATOR_DESTINATIONS_DOC);
+  const cached = (await ref.get()).data();
+  if (cached && Date.now() - cached.fetchedAt < VIATOR_DESTINATIONS_TTL_MS) {
+    viatorDestinations = cached;
+    return cached.list;
+  }
+
+  try {
+    const data = await viatorRequest('/destinations');
+    const list = (data.destinations || [])
+      .filter((d) => VIATOR_PLACE_TYPES.includes(d.type) && d.center)
+      .map((d) => ({
+        id: d.destinationId,
+        name: d.name,
+        lat: d.center.latitude,
+        lng: d.center.longitude,
+        currency: d.defaultCurrencyCode || 'USD',
+      }));
+    viatorDestinations = { fetchedAt: Date.now(), list };
+    await ref.set(viatorDestinations);
+    return list;
+  } catch (error) {
+    // A stale list is better than none
+    if (cached) return cached.list;
+    throw error;
+  }
+};
+
+const formatFromPrice = (amount, currency) => {
+  if (typeof amount !== 'number') return null;
+  try {
+    const price = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    }).format(amount);
+    return `From ${price}`;
+  } catch {
+    return `From ${amount} ${currency}`;
+  }
+};
+
+// Largest landscape image (variants run from 100x100 up to 720x480)
+const viatorImage = (images) => {
+  const image = (images || []).find((i) => i.isCover) || (images || [])[0];
+  const variants = [...(image?.variants || [])].sort((a, b) => b.width - a.width);
+  return (variants.find((v) => v.width > v.height) || variants[0])?.url || null;
+};
+
+const transformViatorProduct = (product, destination) => ({
+  id: `viator_${product.productCode}`,
+  title: product.title,
+  description: (product.description || '').slice(0, VIATOR_DESCRIPTION_LIMIT),
+  image: viatorImage(product.images),
+  // Search results carry no meeting point, so the destination stands in for
+  // the venue and its centre for the coordinates
+  location: destination.name,
+  venueName: destination.name,
+  city: destination.name,
+  latitude: destination.lat,
+  longitude: destination.lng,
+  category: 'experiences',
+  price: formatFromPrice(product.pricing?.summary?.fromPrice, product.pricing?.currency || destination.currency),
+  // Viator's own link: it carries the partner id that earns commission
+  ticketUrl: product.productUrl,
+  source: 'viator',
+  ongoing: true,
+  ctaType: 'book',
+  attribution: 'Powered by Viator',
+  rating: product.reviews?.combinedAverageRating ?? null,
+  reviewCount: product.reviews?.totalReviews ?? 0,
+  durationMinutes: product.duration?.fixedDurationInMinutes ?? product.duration?.variableDurationFromMinutes ?? null,
+});
+
+/**
+ * Top Viator experiences for the destinations within `radius` miles.
+ * Never throws: a Viator problem must not take Ticketmaster results down with it.
+ */
+const fetchViator = async (lat, lng, radius) => {
+  if (!process.env.VIATOR_API_KEY) {
+    console.log('Viator API key not configured');
+    return [];
+  }
+
+  try {
+    const nearby = (await getViatorDestinations())
+      .map((d) => ({ ...d, distance: distanceMiles(lat, lng, d.lat, d.lng) }))
+      .filter((d) => d.distance <= radius)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, VIATOR_MAX_DESTINATIONS);
+
+    const batches = await Promise.all(nearby.map(async (destination) => {
+      try {
+        const data = await viatorRequest('/products/search', {
+          filtering: { destination: String(destination.id) },
+          sorting: { sort: 'DEFAULT' },
+          pagination: { start: 1, count: VIATOR_PRODUCTS_PER_DESTINATION },
+          currency: destination.currency,
+        });
+        return (data.products || [])
+          .filter((p) => p.productCode && p.title && p.productUrl)
+          .map((p) => transformViatorProduct(p, destination));
+      } catch (error) {
+        console.error(`Viator search failed for ${destination.name}:`, error.message);
+        return [];
+      }
+    }));
+
+    // The same product can be listed under two neighbouring destinations
+    const seen = new Set();
+    return batches.flat().filter((e) => (seen.has(e.id) ? false : seen.add(e.id)));
+  } catch (error) {
+    console.error('Viator fetch error:', error.message);
+    return [];
+  }
+};
+
 /**
  * Main cached event fetching function
  * Called by the app to get events for a location
@@ -448,15 +608,19 @@ exports.getEventsForLocation = functions
       };
     }
 
-    console.log(`Cache MISS for ${cacheKey}, fetching from Ticketmaster...`);
+    console.log(`Cache MISS for ${cacheKey}, fetching from Ticketmaster and Viator...`);
   } catch (cacheError) {
     console.error('Cache read error:', cacheError);
   }
 
-  // Fetch from Ticketmaster
-  const allEvents = await fetchTicketmaster(latitude, longitude, cacheRadius(radius));
+  // Both sources at once; each returns [] rather than throwing
+  const [ticketmasterEvents, viatorEvents] = await Promise.all([
+    fetchTicketmaster(latitude, longitude, cacheRadius(radius)),
+    fetchViator(latitude, longitude, cacheRadius(radius)),
+  ]);
+  const allEvents = [...ticketmasterEvents, ...viatorEvents];
 
-  console.log(`Fetched ${allEvents.length} events from Ticketmaster`);
+  console.log(`Fetched ${ticketmasterEvents.length} Ticketmaster events and ${viatorEvents.length} Viator experiences`);
 
   // Save to cache
   try {
