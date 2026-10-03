@@ -9,7 +9,7 @@ import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { parseEventDate } from '../utils/dates';
+import { parseEventDate, formatEventTime } from '../utils/dates';
 import i18n from '../i18n';
 
 const EAS_PROJECT_ID = 'cf67b665-3e15-4bd7-a8b9-a477c2f5711e'; // app.config.js extra.eas.projectId
@@ -129,7 +129,7 @@ const scheduleReminder = async (event, reminder) => {
       title: i18n.t(reminder.eveBefore ? 'notifications.reminderTomorrow' : 'notifications.reminderToday', {
         title: event.title,
       }),
-      body: [event.time, event.location].filter(Boolean).join(' · '),
+      body: [event.time && formatEventTime(event.time), event.location].filter(Boolean).join(' · '),
       data: { screen: 'Saved', eventId: event.id },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminder.at },

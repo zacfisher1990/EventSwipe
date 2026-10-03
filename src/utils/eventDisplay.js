@@ -8,13 +8,14 @@
 //   attribution     — line shown in the details sheet, e.g. "Powered by Viator"
 
 import i18n from '../i18n';
+import { formatEventDateTime } from './dates';
 
 export const isOngoing = (event) => event?.ongoing === true;
 
 /** The date line for cards and lists. */
 export const eventDateText = (event) => {
   if (isOngoing(event)) return event.dateText || i18n.t('discover.availableDaily');
-  return `${event.date || ''}${event.time ? ` • ${event.time}` : ''}`;
+  return formatEventDateTime(event.date, event.time);
 };
 
 /** Label for the ticket/booking button; `fallback` is the screen's usual text. */

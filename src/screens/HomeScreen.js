@@ -9,7 +9,7 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import CardSwiper from '../components/CardSwiper';
 import SaveFireworks from '../components/SaveFireworks';
 import { openTickets } from '../utils/openLink';
-import { formatDateRange } from '../utils/dates';
+import { formatDateRange, formatEventDateTime } from '../utils/dates';
 import { submitReport } from '../services/reportService';
 import { maybeOfferNotifications } from '../services/notificationService';
 import i18n from '../i18n';
@@ -188,7 +188,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <Text style={styles.date}>
-                {i18n.t('discover.nextDate', { defaultValue: 'Next' })}: {event.date}{event.time ? ` • ${event.time}` : ''}
+                {i18n.t('discover.nextDate', { defaultValue: 'Next' })}: {formatEventDateTime(event.date, event.time)}
               </Text>
             </View>
           ) : (

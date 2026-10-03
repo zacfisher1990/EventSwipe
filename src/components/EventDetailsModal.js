@@ -23,6 +23,7 @@ import CommentsSection from './CommentsSection';
 import { useAuth } from '../context/AuthContext';
 import { eventDateText, ticketButtonLabel } from '../utils/eventDisplay';
 import { openTickets } from '../utils/openLink';
+import { formatEventDateTime } from '../utils/dates';
 import { APP_STORE_URL, PLAY_STORE_URL } from '../config/storeLinks';
 import i18n from '../i18n';
 
@@ -386,11 +387,10 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
       if (event.hasMultipleDates && event.allDates) {
         message += `\n📅 ${event.dateCount} dates:`;
         event.allDates.forEach(d => {
-          message += `\n   • ${d.date}${d.time ? ` • ${d.time}` : ''}`;
+          message += `\n   • ${formatEventDateTime(d.date, d.time)}`;
         });
       } else {
-        if (event.date) message += `\n📅 ${event.date}`;
-        if (event.time) message += ` • ${event.time}`;
+        if (event.date) message += `\n📅 ${formatEventDateTime(event.date, event.time)}`;
       }
       if (event.location) message += `\n📍 ${event.location}`;
       if (event.ticketUrl) message += `\n\n🎟️ ${i18n.t('eventDetails.shareGetTickets')}: ${event.ticketUrl}`;
@@ -509,7 +509,7 @@ export default function EventDetailsModal({ visible, event, onClose, onSave, onP
                   <View key={idx} style={styles.dateItem}>
                     <View style={[styles.dateDot, idx === 0 && styles.dateDotFirst]} />
                     <Text style={[styles.dateItemText, idx === 0 && styles.dateItemTextFirst]}>
-                      {d.date}{d.time ? ` • ${d.time}` : ''}
+                      {formatEventDateTime(d.date, d.time)}
                     </Text>
                     {idx === 0 && (
                       <View style={styles.nextBadge}>
